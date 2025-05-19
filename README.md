@@ -17,7 +17,6 @@ This Telegram bot provides a robust subscription management system, supporting a
 
 ---
 
-# Telegram Bot with Subscription Functionality 🤖
 ## Features
 - **Solana-Only Payments:** Secure, validated payments using Solana.
 - **Flexible Subscription Plans:** Support for multiple plans and durations, with customizable pricing.
