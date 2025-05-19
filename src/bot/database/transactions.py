@@ -32,7 +32,7 @@ async def get(
         return Transaction(*row)
 
 
-async def create(txid: str, user_telegram_id: int, months: int = 1) -> None:
+async def create(txid: str, user_telegram_id: int, weeks: int = 1) -> None:
     async with aiosqlite.connect(sqlite_database_filepath) as connection:
         await connection.execute(
             """
@@ -48,7 +48,7 @@ async def create(txid: str, user_telegram_id: int, months: int = 1) -> None:
                 txid,
                 user_telegram_id,
                 False,
-                months,
+                weeks,
                 int(datetime.now().timestamp()),
             )
         )

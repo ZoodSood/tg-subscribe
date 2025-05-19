@@ -16,16 +16,24 @@ async def task(bot: "aiogram.Bot"):
 
         days_left = (sub_end_date - datetime_now).days + 1
         print(days_left)
+        # Function to notify users about their subscription ending soon. Handles notification days and message formatting.
+        # Note: datetime.now() is naive and assumes server timezone; consider using timezone-aware datetimes for production reliability.
         if days_left in SUBSCRIBE_END_NOTIFICATION_DAYS:
             if days_left == 1:
-                await bot.send_message(
-                    chat_id=user.telegram_id,
-                    text="Your subscription will end soon!\n"
-                    f"<code>{days_left}</code> day left until the end.",
-                )
+                try:
+                    await bot.send_message(
+                        chat_id=user.telegram_id,
+                        text="Your subscription will end soon!\n"
+                        f"<code>{days_left}</code> day left until the end.",
+                    )
+                except Exception as e:
+                    print(f"Failed to send message to {user.telegram_id}: {e}")
             else:
-                await bot.send_message(
-                    chat_id=user.telegram_id,
-                    text="Your subscription will end soon!\n"
-                    f"<code>{days_left}</code> days left until the end.",
-                )
+                try:
+                    await bot.send_message(
+                        chat_id=user.telegram_id,
+                        text="Your subscription will end soon!\n"
+                        f"<code>{days_left}</code> days left until the end.",
+                    )
+                except Exception as e:
+                    print(f"Failed to send message to {user.telegram_id}: {e}")

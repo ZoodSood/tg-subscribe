@@ -8,7 +8,6 @@ from handlers import (
     check_subscription_router,
     close_functionality_router,
     payment_router,
-    referral_router,
     start_router,
 )
 from loader import bot, dp, tasks_scheduler
@@ -26,7 +25,6 @@ async def on_startup():
         close_functionality_router,
         channels_join_requests_router,
         check_subscription_router,
-        referral_router,
         balance_router,
     )
 

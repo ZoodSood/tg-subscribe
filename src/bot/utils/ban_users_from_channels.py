@@ -19,9 +19,17 @@ async def task(bot: "aiogram.Bot"):
             continue
 
         for channel in channels:
-            member = await bot.get_chat_member(channel.id, user.telegram_id)
+            try:
+                member = await bot.get_chat_member(channel.id, user.telegram_id)
+            except Exception as e:
+                # Handle case where user is not found or bot lacks permission
+                continue
             if member.status in ["left", "creator"]:
                 continue
-
-            await bot.ban_chat_member(channel.id, user.telegram_id)
-            await bot.unban_chat_member(channel.id, user.telegram_id)
+            try:
+                # Ban and immediately unban to remove user from channel (Telegram API compliant)
+                await bot.ban_chat_member(channel.id, user.telegram_id)
+                await bot.unban_chat_member(channel.id, user.telegram_id)
+            except Exception as e:
+                # Log or handle errors (e.g., insufficient rights, user already removed)
+                continue
