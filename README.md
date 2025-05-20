@@ -1,7 +1,7 @@
 # Telegram Bot with Subscription Functionality 🤖
 
 ## Overview
-This Telegram bot provides a robust subscription management system, supporting advanced admin controls, analytics, and secure Solana-based payments. Originally based on a public template, it has been heavily customized for client needs, with all legacy Tron payment code removed and Solana as the exclusive payment method.
+This Telegram bot provides a robust subscription management system, supporting advanced admin controls, analytics, and secure Solana-based payments. Originally based on a public template, it has been heavily customized for client needs, with nearly all legacy payment code removed and Solana as the exclusive payment method.
 
 ---
 
@@ -110,10 +110,10 @@ This project includes comprehensive unit and integration tests to ensure reliabi
 
 Before running the bot, you need to configure the following parameters:
 
-### 0.0 Create a bot on Telegram and obtain its token from BotFather.
+> **Note:** Create a bot on Telegram and obtain its token from BotFather.
 
 ### 1. Environment Variables
-Rename `.env-dist` to `.env` and fill in your values:
+Rename `.env-dist` to `.env` and fill in your values as such:
 ```env
 BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
 BOT_OWNER_ID=123456789
@@ -181,9 +181,9 @@ AMOUNT_DEVIATION_VALUE = 0.01     # Allowed deviation in SOL
 - **Need to add more channels or admins?** Edit `private_channels` and `ADMINS_ID_LIST` in `config.py`.
 
 ## Notes
-- All Tron/legacy payment code has been removed. Only Solana is supported.
-- For advanced customization, review the code in `src/bot/handlers/` and `src/bot/utils/solana_service.py`.
-- For automated testing and deployment, see the TODO list for planned CI/CD improvements. (CI/CD pipeline coming soon)
+- Tron payment has been removed. Only Solana is supported, for now.
+- For advanced customization, review the code in `src/bot/`.
+- For automated testing and deployment, see the TODO list for planned improvements. (CI/CD pipeline with Docker coming soon)
 
 ---
 
