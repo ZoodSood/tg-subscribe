@@ -1,8 +1,8 @@
 from aiogram import F, Router, types
 from aiogram.types import ChatInviteLink
-from loader import bot
-from database import users
-from data.config import CHANNELS  # Import channel config
+from ..loader import bot
+from ..database import users
+from ..data.config import private_channels as CHANNELS
 import logging
 from datetime import datetime, timedelta
 

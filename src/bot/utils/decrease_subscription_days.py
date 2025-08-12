@@ -1,8 +1,8 @@
 import typing
 from datetime import datetime
 
-from data.config import SUBSCRIBE_END_NOTIFICATION_DAYS
-from database import users
+from ..data.config import SUBSCRIBE_END_NOTIFICATION_DAYS
+from ..database import users
 
 if typing.TYPE_CHECKING:
     import aiogram

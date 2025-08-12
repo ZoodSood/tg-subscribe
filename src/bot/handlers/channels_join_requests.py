@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from aiogram import Router, types
-from database import users
+from ..database import users
 
 channels_join_requests_router = Router()
 

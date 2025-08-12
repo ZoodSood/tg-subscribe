@@ -1,5 +1,5 @@
 from aiogram import F, Router, types
-from database import users
+from ..database import users
 
 balance_router = Router()
 
