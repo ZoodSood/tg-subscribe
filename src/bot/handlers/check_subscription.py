@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from aiogram import F, Router, types
-from database import users
+from ..database import users
 
 check_subscription_router = Router()
 

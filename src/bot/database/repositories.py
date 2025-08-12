@@ -5,7 +5,7 @@ Repository classes for database access, separating SQL logic from business logic
 import logging
 from typing import List, Optional, Union
 import aiosqlite
-from data.config import sqlite_database_filepath
+from ..data.config import sqlite_database_filepath
 from .models import User, Transaction
 
 class UserRepository:

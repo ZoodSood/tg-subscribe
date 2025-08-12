@@ -6,12 +6,12 @@ import re
 from decimal import Decimal, getcontext
 
 from logzero import logger
-from solders.pubkey import PublicKey
+from solders.pubkey import Pubkey
 from solana.rpc.async_api import AsyncClient
 from solders.signature import Signature
-from solders.transaction_status import EncodedTransactionWithStatusMeta, UiTransactionEncoding
+from solders.transaction_status import EncodedTransactionWithStatusMeta
 
-from data.config import SOLANA_RPC_URL, SOLANA_WALLET_ADDRESS
+from ..data.config import SOLANA_RPC_URL, SOLANA_WALLET_ADDRESS
 
 # Set precision for Decimal calculations
 getcontext().prec = 18
@@ -47,7 +47,7 @@ async def check_transaction_for_correct_data(
         async with AsyncClient(SOLANA_RPC_URL) as client:
             tx_response = await client.get_transaction(
                 Signature.from_string(signature),
-                encoding=UiTransactionEncoding.JSONParsed,
+                encoding="jsonParsed",
                 max_supported_transaction_version=0,
             )
 

@@ -1,6 +1,6 @@
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from data.config import private_channels
+from ..data.config import private_channels
 
 
 async def channels() -> types.InlineKeyboardMarkup:

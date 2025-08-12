@@ -1,8 +1,8 @@
 import typing
 from datetime import datetime
 
-from data.config import private_channels
-from database import users
+from ..data.config import private_channels
+from ..database import users
 
 if typing.TYPE_CHECKING:
     import aiogram

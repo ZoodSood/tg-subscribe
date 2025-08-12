@@ -2,7 +2,7 @@ from datetime import datetime
 
 from aiogram import types
 from aiogram.filters import BaseFilter
-from database import users
+from ..database import users
 
 
 class UserNotSubscribedFilter(BaseFilter):

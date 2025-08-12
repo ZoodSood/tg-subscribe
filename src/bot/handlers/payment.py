@@ -4,12 +4,12 @@ from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 from logzero import logger
 
-from data.config import SOLANA_WALLET_ADDRESS, SUBSCRIBE_AMOUNT_BY_PLANS
-from database import transactions, users
-from keyboards import reply as reply_keyboards
-from services.payment_validator import PaymentValidator
-from services.price_service import PriceService
-from statesgroup import GetTxidFromUser
+from ..data.config import SOLANA_WALLET_ADDRESS, SUBSCRIBE_AMOUNT_BY_PLANS
+from ..database import transactions, users
+from ..keyboards import reply as reply_keyboards
+from ..services.payment_validator import PaymentValidator
+from ..services.price_service import PriceService
+from ..statesgroup import GetTxidFromUser
 
 # Set precision for Decimal calculations
 getcontext().prec = 18
@@ -172,7 +172,7 @@ async def handle_payment_failed(message: types.Message, state: FSMContext):
 
 # Note: The promo code functionality has been kept as-is.
 # It could also be refactored into its own service in the future.
-from database.repositories import PromoCodeRepository
+from ..database.repositories import PromoCodeRepository
 
 @payment_router.message(F.text == "Redeem promo code")
 async def prompt_promo_code(message: types.Message, state: FSMContext):

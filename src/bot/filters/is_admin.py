@@ -1,6 +1,6 @@
 from aiogram import types
 from aiogram.filters import BaseFilter
-from data.config import ADMINS_ID_LIST
+from ..data.config import ADMINS_ID_LIST
 
 
 class IsAdminFilter(BaseFilter):

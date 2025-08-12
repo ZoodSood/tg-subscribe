@@ -3,10 +3,10 @@ from typing import Optional
 from aiogram import F, Router, types
 from aiogram.filters import CommandObject, CommandStart
 from aiogram.fsm.context import FSMContext
-from database import users
-from filters.user_not_subscribed import UserNotSubscribedFilter
-from filters.user_subscribed import UserSubscribedFilter
-from keyboards import reply as reply_keyboards
+from ..database import users
+from ..filters.user_not_subscribed import UserNotSubscribedFilter
+from ..filters.user_subscribed import UserSubscribedFilter
+from ..keyboards import reply as reply_keyboards
 
 start_router = Router()
 

@@ -4,7 +4,7 @@ from typing import Any, Dict
 from aiogram import BaseMiddleware
 from aiogram.types import Message
 from aiogram.types.base import TelegramObject
-from database import users
+from ..database import users
 
 
 class CreateUserMiddleware(BaseMiddleware):

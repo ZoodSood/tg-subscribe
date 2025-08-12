@@ -1,13 +1,13 @@
 import typing
 from datetime import datetime, timedelta
 
-from data.config import (
+from ..data.config import (
     NUMBER_DAYS_FROM_ONE_PAYMENT,
     SUBSCRIBE_AMOUNT_BY_PLANS,
 )
-from database import transactions, users
-from keyboards import reply
-from utils import solana_service
+from ..database import transactions, users
+from ..keyboards import reply
+from . import solana_service
 import aiogram
 
 async def task(bot: "aiogram.Bot"):

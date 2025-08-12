@@ -15,6 +15,16 @@ async def close_functionality() -> types.ReplyKeyboardMarkup:
     )
 
 
+async def retry_or_cancel() -> types.ReplyKeyboardMarkup:
+    return types.ReplyKeyboardMarkup(
+        keyboard=[
+            [types.KeyboardButton(text="Retry")],
+            [types.KeyboardButton(text="Cancel")],
+        ],
+        resize_keyboard=True,
+    )
+
+
 async def make_subscribtion() -> types.ReplyKeyboardMarkup:
     return types.ReplyKeyboardMarkup(
         keyboard=[

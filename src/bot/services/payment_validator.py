@@ -6,14 +6,14 @@ from decimal import Decimal, getcontext
 
 from logzero import logger
 
-from data.config import (
+from ..data.config import (
     AMOUNT_DEVIATION_ENABLED,
     AMOUNT_DEVIATION_VALUE,
     SUBSCRIBE_AMOUNT_BY_PLANS,
 )
-from database import transactions
-from services.price_service import PriceService
-from utils import solana_service, rate_limiter
+from ..database import transactions
+from .price_service import PriceService
+from ..utils import solana_service, rate_limiter
 
 # Set precision for Decimal calculations
 getcontext().prec = 18

@@ -3,12 +3,12 @@ from datetime import datetime
 from aiogram import Router, types
 from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from data.config import MAILING_TEXT, BOT_OWNER_ID
-from database import users
-from filters import IsAdminFilter
-from loader import bot
-from keyboards.inline import admin_dashboard_keyboard
-from database.repositories import PromoCodeRepository
+from ..data.config import MAILING_TEXT, BOT_OWNER_ID
+from ..database import users
+from ..filters import IsAdminFilter
+from ..loader import bot
+from ..keyboards.inline import admin_dashboard_keyboard
+from ..database.repositories import PromoCodeRepository
 from aiogram.filters import CommandObject
 
 admin_router = Router()
