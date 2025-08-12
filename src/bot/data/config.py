@@ -25,6 +25,11 @@ import re
 if not re.fullmatch(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$", SOLANA_WALLET_ADDRESS):
     raise ValueError("Invalid SOLANA_WALLET_ADDRESS format. Please check your configuration.")
 
+# Securely load Solana RPC URL from environment variable
+SOLANA_RPC_URL = env.str("SOLANA_RPC_URL", default=None)
+if not SOLANA_RPC_URL:
+    raise ValueError("SOLANA_RPC_URL must be set in the environment variables.")
+
 # Key - count weeks
 # Value - subscribe amount (USD equivalent in SOL, e.g., 200 means $200 worth of SOL)
 # You can customise this dict

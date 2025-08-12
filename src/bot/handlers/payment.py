@@ -1,78 +1,77 @@
+from decimal import Decimal, getcontext
+
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
-from data.config import SUBSCRIBE_AMOUNT_BY_PLANS, SOLANA_WALLET_ADDRESS
-from database import transactions
+from logzero import logger
+
+from data.config import SOLANA_WALLET_ADDRESS, SUBSCRIBE_AMOUNT_BY_PLANS
+from database import transactions, users
 from keyboards import reply as reply_keyboards
-from services.payment_service import PaymentService
+from services.payment_validator import PaymentValidator
+from services.price_service import PriceService
 from statesgroup import GetTxidFromUser
-from utils import solana_service, rate_limiter
-from database.repositories import PromoCodeRepository
-from aiogram.filters import CommandObject
+
+# Set precision for Decimal calculations
+getcontext().prec = 18
 
 payment_router = Router()
-
-# --- Per-user wallet feature (currently disabled) ---
-# from utils import per_user_wallet_service
-# PER_USER_WALLET_ENABLED = False  # Set to True to enable per-user wallet generation
 
 @payment_router.message(F.text == "Make subscription")
 @payment_router.message(F.text == "Renew subscription")
 async def make_subscription(message: types.Message):
     await message.answer(
-        text=f"Choose subscription plan",
+        text="Choose a subscription plan:",
         reply_markup=await reply_keyboards.subscription_termins(
             SUBSCRIBE_AMOUNT_BY_PLANS.keys()
         ),
     )
 
-
 @payment_router.message(F.text.contains("week"))
-async def set_subscribtion_termin(message: types.Message, state: FSMContext):
+async def set_subscription_term(message: types.Message, state: FSMContext):
     """
-    Handles the user's selection of a subscription term, checks allowed payment window, and provides payment instructions.
+    Handles the user's selection of a subscription term and provides payment instructions.
     """
-    if message.text is None:
+    if not message.text:
         return
-    # Validate subscription term input
+
     try:
-        termin = int(message.text.split(" ")[0])
-        if termin not in VALID_SUBSCRIPTION_TERMS:
+        term = int(message.text.split(" ")[0])
+        if term not in SUBSCRIBE_AMOUNT_BY_PLANS:
             await message.answer(
-                text="Invalid subscription duration. Please select from available options.",
+                text="Invalid subscription duration. Please select from the available options.",
                 reply_markup=await reply_keyboards.back_to_main_menu(),
             )
             return
-    except ValueError:
+    except (ValueError, IndexError):
         await message.answer(
-            text="Invalid subscription format. Please select from available options.",
+            text="Invalid format. Please select a subscription plan from the buttons.",
             reply_markup=await reply_keyboards.back_to_main_menu(),
         )
         return
 
-    amount_required = PaymentService.get_amount_for_plan(termin)
-    # Check if current time is Friday 12:00-14:00 UTC
-    from datetime import datetime, timezone
-    now_utc = datetime.now(timezone.utc)
-    if not (now_utc.weekday() == 4 and now_utc.hour >= 12 and now_utc.hour < 14):
+    usd_amount = SUBSCRIBE_AMOUNT_BY_PLANS[term]
+    sol_price_usd = await PriceService.get_sol_price_in_usd()
+
+    if not sol_price_usd:
         await message.answer(
-            text="Payments are only accepted on Fridays between 12:00 and 14:00 UTC. Please try again during the allowed window.",
+            text="Could not fetch the current SOL price. Please try again in a few moments.",
             reply_markup=await reply_keyboards.back_to_main_menu(),
         )
         return
-    await state.set_data({"subscription_termin": termin})
-    # --- Per-user wallet logic (disabled) ---
-    # if PER_USER_WALLET_ENABLED:
-    #     user_wallet = await per_user_wallet_service.get_or_create_wallet(message.from_user.id)
-    #     wallet_address = user_wallet.address
-    # else:
-    wallet_address = SOLANA_WALLET_ADDRESS
+
+    required_sol_amount = Decimal(usd_amount) / Decimal(sol_price_usd)
+    await state.set_data({"subscription_term": term})
+
     await message.answer(
-        text=f"To pay, use this <b>Solana</b> wallet: <code>{SOLANA_WALLET_ADDRESS}</code>.\n"
-        f"Transfer ${amount_required} in <b>SOL</b> to this address. Only SOL is accepted.\n"
-        "You have <b>10 minutes</b> to complete the payment. After submitting, click the Confirm button.",
+        text=(
+            f"To subscribe for {term} week(s) for ${usd_amount}, please send exactly "
+            f"<b>{required_sol_amount:.8f} SOL</b> to the following wallet address:\n\n"
+            f"<code>{SOLANA_WALLET_ADDRESS}</code>\n\n"
+            "Only SOL transfers on the Solana network are accepted.\n"
+            "After you have sent the transaction, click the 'Confirm Transfer' button below."
+        ),
         reply_markup=await reply_keyboards.confirm_transfer(),
     )
-
 
 @payment_router.message(F.text == "Confirm transfer")
 async def confirm_transfer(message: types.Message, state: FSMContext):
@@ -81,31 +80,87 @@ async def confirm_transfer(message: types.Message, state: FSMContext):
     """
     await state.set_state(GetTxidFromUser.state)
     await message.answer(
-        text="Great, send me the transaction signature (hash) to verify the transfer.",
+        text="Please send me the transaction signature (hash) to verify your payment.",
         reply_markup=types.ReplyKeyboardRemove(),
     )
 
+@payment_router.message(GetTxidFromUser.state)
+async def check_transaction(message: types.Message, state: FSMContext):
+    """
+    Receives the transaction signature, validates it using the PaymentValidator service,
+    and processes the subscription if valid.
+    """
+    if not message.text or not message.from_user:
+        return
+
+    txid = message.text.strip()
+    user_id = message.from_user.id
+    data = await state.get_data()
+    weeks = data.get("subscription_term")
+
+    if not weeks:
+        await message.answer(
+            "Your session has expired. Please select a subscription plan again.",
+            reply_markup=await reply_keyboards.back_to_main_menu(),
+        )
+        await state.clear()
+        return
+
+    await message.answer("Validating your transaction... This may take a moment.")
+
+    is_valid, validation_message = await PaymentValidator.validate_transaction(
+        txid=txid, user_id=user_id, weeks=weeks
+    )
+
+    if not is_valid:
+        await state.set_state(GetTxidFromUser.payment_failed)
+        await message.answer(
+            text=f"Payment failed: {validation_message}",
+            reply_markup=await reply_keyboards.retry_or_cancel(),
+        )
+        return
+
+    # If validation is successful, create the transaction record and update subscription
+    try:
+        await transactions.create(txid, user_id, weeks)
+
+        from datetime import datetime, timedelta
+        user = await users.get(telegram_id=user_id)
+        now = datetime.now()
+
+        if user and user.days_sub_end:
+            try:
+                current_end = datetime.strptime(user.days_sub_end, "%Y-%m-%d %H:%M:%S")
+                if current_end > now:
+                    now = current_end
+            except (ValueError, TypeError):
+                logger.warning(f"Could not parse existing subscription end date for user {user_id}.")
+
+        new_end = now + timedelta(weeks=weeks)
+        await users.update_subscription_date(new_end.strftime("%Y-%m-%d %H:%M:%S"), telegram_id=user_id)
+
+        await state.clear()
+        await message.answer(
+            text=f"✅ Payment successful! Your subscription is now active until {new_end.strftime('%Y-%m-%d')}.",
+            reply_markup=await reply_keyboards.back_to_main_menu(),
+        )
+
+    except Exception as e:
+        logger.error(f"Error processing subscription for user {user_id} after validation: {e}")
+        await message.answer(
+            "There was a database error while activating your subscription. Please contact support.",
+            reply_markup=await reply_keyboards.back_to_main_menu(),
+        )
 
 @payment_router.message(GetTxidFromUser.payment_failed)
 async def handle_payment_failed(message: types.Message, state: FSMContext):
     """
-    Handles failed payment scenarios, provides user feedback and options to retry or cancel.
-    """
-    await message.answer(
-        text="Payment verification failed. Would you like to try again or cancel?",
-        reply_markup=await reply_keyboards.retry_or_cancel(),
-    )
-    await state.set_state(GetTxidFromUser.retry)
-
-@payment_router.message(GetTxidFromUser.retry)
-async def handle_payment_retry(message: types.Message, state: FSMContext):
-    """
-    Handles payment retry logic, allowing the user to resubmit a transaction signature or cancel.
+    Handles the user's response after a failed payment.
     """
     if message.text and "retry" in message.text.lower():
         await state.set_state(GetTxidFromUser.state)
         await message.answer(
-            text="Please send your transaction signature again.",
+            text="Please send your new transaction signature.",
             reply_markup=types.ReplyKeyboardRemove(),
         )
     else:
@@ -115,207 +170,10 @@ async def handle_payment_retry(message: types.Message, state: FSMContext):
             reply_markup=await reply_keyboards.back_to_main_menu(),
         )
 
-@payment_router.message(GetTxidFromUser.timeout)
-async def handle_payment_timeout(message: types.Message, state: FSMContext):
-    """
-    Handles payment timeout scenarios, notifies the user and clears the state.
-    """
-    await state.clear()
-    await message.answer(
-        text="Your payment session has timed out. Please start again if you wish to subscribe.",
-        reply_markup=await reply_keyboards.back_to_main_menu(),
-    )
+# Note: The promo code functionality has been kept as-is.
+# It could also be refactored into its own service in the future.
+from database.repositories import PromoCodeRepository
 
-@payment_router.message(GetTxidFromUser.state)
-async def check_transaction(message: types.Message, state: FSMContext):
-    """
-    Checks the transaction signature and validates the payment for the subscription.
-    Notifies the user if the invoice is expired (older than 10 minutes).
-    Enhanced: Handles failed payment, retry, and timeout logic.
-    """
-    try:
-        data = await state.get_data()
-        if not data.get('subscription_termin'):
-            await message.answer("Session expired. Please restart payment process.")
-            await state.clear()
-            return
-        if message.text is None or message.from_user is None:
-            return
-        user_id = message.from_user.id
-        txid = message.text.strip()
-        # Prevent abuse of transaction checks
-        if not rate_limiter.is_allowed(user_id):
-            wait_sec = rate_limiter.time_until_allowed(user_id)
-            await message.answer(
-                text=f"You are doing this too frequently. Please wait {wait_sec} seconds before trying again."
-            )
-            return
-        # Check if txid was already used
-        transaction = await transactions.get(txid=txid)
-        if transaction is not None:
-            await state.set_state(GetTxidFromUser.payment_failed)
-            await message.answer(
-                text="This transaction has already been used. Please send a new transaction signature or retry.",
-                reply_markup=await reply_keyboards.retry_or_cancel(),
-            )
-            return
-        # Check for unpaid invoice older than 10 minutes
-        from datetime import datetime, timezone, timedelta
-        now_ts = int(datetime.now(timezone.utc).timestamp())
-        recent_unpaid = await transactions.get_new()
-        for t in recent_unpaid:
-            if t.owner_telegram_id == user_id and not t.status:
-                if now_ts - t.created_at_timestamp > 600:
-                    await transactions.set_status(False, database_id=t.id)
-                    await state.set_state(GetTxidFromUser.timeout)
-                    await message.answer(
-                        text="Your previous invoice was not paid in time and has been cancelled.",
-                        reply_markup=await reply_keyboards.retry_or_cancel(),
-                    )
-                    return
-                else:
-                    await message.answer(
-                        text="You have an unpaid invoice. Please pay or wait for it to expire before submitting a new transaction.",
-                        reply_markup=await reply_keyboards.back_to_main_menu(),
-                    )
-                    return
-        # Validate Solana transaction signature and check payment details
-        weeks = data.get("subscription_termin", 1)
-        amount_required = PaymentService.get_amount_for_plan(weeks)
-        # --- Per-user wallet logic (disabled) ---
-        # if PER_USER_WALLET_ENABLED:
-        #     user_wallet = await per_user_wallet_service.get_or_create_wallet(user_id)
-        #     wallet_address = user_wallet.address
-        # else:
-        wallet_address = SOLANA_WALLET_ADDRESS
-        # Validate wallet address format (already checked at config load, but double-check for runtime safety)
-        import re
-        if not re.fullmatch(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$", wallet_address):
-            await message.answer(
-                text="Invalid wallet address configuration. Please contact support."
-            )
-            return
-        if not await solana_service.is_valid_transaction_signature(txid):
-            await state.set_state(GetTxidFromUser.payment_failed)
-            await message.answer(
-                text="Invalid transaction signature format. Please check and try again.",
-                reply_markup=await reply_keyboards.retry_or_cancel(),
-            )
-            return
-        # Check transaction details on Solana
-        from data.config import AMOUNT_DEVIATION_ENABLED, AMOUNT_DEVIATION_VALUE
-        try:
-            is_valid = await solana_service.check_transaction_for_correct_data(
-                txid, amount_required, AMOUNT_DEVIATION_ENABLED, AMOUNT_DEVIATION_VALUE
-            )
-        except Exception as e:
-            await state.set_state(GetTxidFromUser.payment_failed)
-            await message.answer(
-                text="Blockchain API error. Please try again later or retry.",
-                reply_markup=await reply_keyboards.retry_or_cancel(),
-            )
-            return
-        if not is_valid:
-            await state.set_state(GetTxidFromUser.payment_failed)
-            await message.answer(
-                text="Transaction not found, wrong amount, or wrong destination wallet. Please check and try again.",
-                reply_markup=await reply_keyboards.retry_or_cancel(),
-            )
-            return
-        try:
-            await transactions.create(
-                txid,
-                user_id,
-                weeks,
-            )
-        except Exception as e:
-            await state.set_state(GetTxidFromUser.payment_failed)
-            await message.answer(
-                text="Database error while recording your payment. Please retry or contact support.",
-                reply_markup=await reply_keyboards.retry_or_cancel(),
-            )
-            return
-        from database import users
-        from datetime import datetime, timedelta
-        try:
-            user = await users.get(telegram_id=user_id)
-            if user:
-                now = datetime.now()
-                if user.days_sub_end:
-                    try:
-                        current_end = datetime.strptime(user.days_sub_end, "%Y-%m-%d %H:%M:%S")
-                        if current_end > now:
-                            now = current_end
-                    except ValueError as ve:
-                        await state.set_state(GetTxidFromUser.payment_failed)
-                        await message.answer(
-                            text="Error processing your subscription date. Contact support.",
-                            reply_markup=await reply_keyboards.retry_or_cancel(),
-                        )
-                        return
-                    except Exception as e:
-                        await state.set_state(GetTxidFromUser.payment_failed)
-                        await message.answer(
-                            text="System error processing subscription. Contact support.",
-                            reply_markup=await reply_keyboards.retry_or_cancel(),
-                        )
-                        return
-                new_end = now + timedelta(weeks=weeks)
-                await users.update_subscription_date(new_end.strftime("%Y-%m-%d %H:%M:%S"), telegram_id=user_id)
-        except Exception as e:
-            await state.set_state(GetTxidFromUser.payment_failed)
-            await message.answer(
-                text="Database error updating subscription. Please retry or contact support.",
-                reply_markup=await reply_keyboards.retry_or_cancel(),
-            )
-            return
-        await state.clear()
-        await message.answer(
-            text="Great, wait for the end of the transaction, and I will notify you when the subscription is charged.",
-            reply_markup=await reply_keyboards.back_to_main_menu(),
-        )
-    except Exception as e:
-        await state.set_state(GetTxidFromUser.payment_failed)
-        await message.answer(
-            text="An unexpected error occurred. Please retry or contact support.",
-            reply_markup=await reply_keyboards.retry_or_cancel(),
-        )
-
-
-# def validate_transaction(tx_data: dict) -> bool:
-#     """Verify transaction meets all security requirements"""
-#     # Placeholder implementations for missing helper functions
-#     def _validate_tx_uniqueness(signature):
-#         # Implement uniqueness check or import from utils
-#         return True
-#     def _validate_tx_timestamp(timestamp):
-#         # Implement timestamp validation logic
-#         return True
-#     def _validate_amount(amount):
-#         # Implement amount validation logic
-#         return True
-#     def _validate_destination(receiver):
-#         # Implement destination validation logic
-#         return True
-#     return all([
-#         _validate_tx_uniqueness(tx_data['signature']),
-#         _validate_tx_timestamp(tx_data['timestamp']),
-#         _validate_amount(tx_data['amount']),
-#         _validate_destination(tx_data['receiver'])
-#     ])
-
-
-# Basic security logging
-async def log_security_event(event_type: str, user_id: int, details: dict):
-    """Log security-related events for monitoring"""
-    from datetime import datetime
-    import json
-    await db.execute(
-        "INSERT INTO security_logs VALUES (?, ?, ?, ?)",
-        (datetime.now(), event_type, user_id, json.dumps(details))
-    )
-
-    
 @payment_router.message(F.text == "Redeem promo code")
 async def prompt_promo_code(message: types.Message, state: FSMContext):
     """
@@ -352,13 +210,12 @@ async def redeem_promo_code(message: types.Message, state: FSMContext):
     if promo.max_uses and promo.used_count >= promo.max_uses:
         await message.answer("This promo code has reached its maximum number of uses.")
         return
-    # Check if user has already redeemed a promo code (optional, for one-time per user)
-    # Optionally, implement logic here if needed
+
     success = await PromoCodeRepository.redeem(code, message.from_user.id)
     if not success:
         await message.answer("Failed to redeem promo code. It may have expired or reached its usage limit.")
         return
-    # Grant free subscription (e.g., 1 week)
+
     from database import users
     from datetime import timedelta
     user = await users.get(telegram_id=message.from_user.id)
@@ -370,8 +227,10 @@ async def redeem_promo_code(message: types.Message, state: FSMContext):
                 now = current_end
         except Exception:
             pass
+
     new_end = now + timedelta(weeks=1)
     await users.update_subscription_date(new_end.strftime("%Y-%m-%d %H:%M:%S"), telegram_id=message.from_user.id)
+
     await state.clear()
     await message.answer(
         text=f"Promo code redeemed! You have been granted 1 week of free access. Subscription active until <code>{new_end.strftime('%Y-%m-%d %H:%M:%S')}</code>.",
