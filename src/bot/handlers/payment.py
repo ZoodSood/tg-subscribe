@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from logzero import logger
 
 from ..data.config import SOLANA_WALLET_ADDRESS, SUBSCRIBE_AMOUNT_BY_PLANS
-from ..database import transactions, users
+from ..database.repositories import TransactionRepository, UserRepository
 from ..keyboards import reply as reply_keyboards
 from ..services.payment_validator import PaymentValidator
 from ..services.price_service import PriceService
@@ -122,10 +122,10 @@ async def check_transaction(message: types.Message, state: FSMContext):
 
     # If validation is successful, create the transaction record and update subscription
     try:
-        await transactions.create(txid, user_id, weeks)
+        await TransactionRepository.create(txid, user_id, weeks)
 
         from datetime import datetime, timedelta
-        user = await users.get(telegram_id=user_id)
+        user = await UserRepository.get(telegram_id=user_id)
         now = datetime.now()
 
         if user and user.days_sub_end:
@@ -137,7 +137,7 @@ async def check_transaction(message: types.Message, state: FSMContext):
                 logger.warning(f"Could not parse existing subscription end date for user {user_id}.")
 
         new_end = now + timedelta(weeks=weeks)
-        await users.update_subscription_date(new_end.strftime("%Y-%m-%d %H:%M:%S"), telegram_id=user_id)
+        await UserRepository.update_subscription_date(new_end.strftime("%Y-%m-%d %H:%M:%S"), telegram_id=user_id)
 
         await state.clear()
         await message.answer(
@@ -216,9 +216,8 @@ async def redeem_promo_code(message: types.Message, state: FSMContext):
         await message.answer("Failed to redeem promo code. It may have expired or reached its usage limit.")
         return
 
-    from database import users
     from datetime import timedelta
-    user = await users.get(telegram_id=message.from_user.id)
+    user = await UserRepository.get(telegram_id=message.from_user.id)
     now = datetime.now()
     if user and user.days_sub_end:
         try:
@@ -229,7 +228,7 @@ async def redeem_promo_code(message: types.Message, state: FSMContext):
             pass
 
     new_end = now + timedelta(weeks=1)
-    await users.update_subscription_date(new_end.strftime("%Y-%m-%d %H:%M:%S"), telegram_id=message.from_user.id)
+    await UserRepository.update_subscription_date(new_end.strftime("%Y-%m-%d %H:%M:%S"), telegram_id=message.from_user.id)
 
     await state.clear()
     await message.answer(

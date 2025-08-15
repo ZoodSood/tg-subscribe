@@ -11,7 +11,7 @@ from ..data.config import (
     AMOUNT_DEVIATION_VALUE,
     SUBSCRIBE_AMOUNT_BY_PLANS,
 )
-from ..database import transactions
+from ..database.repositories import TransactionRepository
 from .price_service import PriceService
 from ..utils import solana_service, rate_limiter
 
@@ -36,7 +36,7 @@ class PaymentValidator:
             return False, "Invalid transaction signature format. Please check and try again."
 
         # 3. Check if transaction has already been used
-        transaction = await transactions.get(txid=txid)
+        transaction = await TransactionRepository.get(txid=txid)
         if transaction is not None:
             return False, "This transaction has already been used."
 

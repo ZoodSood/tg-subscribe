@@ -9,7 +9,7 @@ from src.bot.services.price_service import PriceService
 def mock_httpx_client():
     """Fixture to mock httpx.AsyncClient."""
     mock_client = AsyncMock()
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_client.__aenter__.return_value.get.return_value = mock_response
 
     with patch("httpx.AsyncClient", return_value=mock_client) as mock_class:

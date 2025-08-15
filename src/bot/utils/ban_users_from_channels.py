@@ -2,14 +2,14 @@ import typing
 from datetime import datetime
 
 from ..data.config import private_channels
-from ..database import users
+from ..database.repositories import UserRepository
 
 if typing.TYPE_CHECKING:
     import aiogram
 
 
 async def task(bot: "aiogram.Bot"):
-    users_records = await users.get_all()
+    users_records = await UserRepository.get_all()
     channels = [
         await bot.get_chat(private_channels[name]["id"])
         for name in private_channels.keys()

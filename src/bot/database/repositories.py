@@ -56,9 +56,9 @@ class UserRepository:
                 async with aiosqlite.connect(sqlite_database_filepath) as connection:
                     await connection.execute(
                         f"""
-                            INSERT INTO {User.get_table_name()} {User.get_fields_for_sql_query()} VALUES (?, ?, ?, ?, datetime('now'), ?, ?, ?)
+                            INSERT INTO {User.get_table_name()} {User.get_fields_for_sql_query()} VALUES (?, ?, ?, ?, datetime('now'), ?, ?, ?, ?)
                         """,
-                        (telegram_id, firstname, lastname, username, 0, 0, invite_link or '')
+                        (telegram_id, firstname, lastname, username, 0, invite_link or '', 0, None)
                     )
                     await connection.commit()
             return True
@@ -173,7 +173,7 @@ class TransactionRepository:
             async with aiosqlite.connect(sqlite_database_filepath) as connection:
                 await connection.execute(
                     f"""
-                        INSERT INTO {Transaction.get_table_name()} {Transaction.get_fields_for_sql_query()} VALUES (?, ?, ?, ?, ?, ?)
+                        INSERT INTO {Transaction.get_table_name()} {Transaction.get_fields_for_sql_query()} VALUES (?, ?, ?, ?, ?)
                     """,
                     (txid, user_telegram_id, False, weeks, int(datetime.now().timestamp()))
                 )
@@ -223,8 +223,8 @@ class PromoCodeRepository:
         Create a new promo code.
         """
         import aiosqlite
-        from data.config import sqlite_database_filepath
-        from datetime import datetime
+        from ..data.config import sqlite_database_filepath
+        import datetime
         try:
             async with aiosqlite.connect(sqlite_database_filepath) as connection:
                 await connection.execute(
@@ -232,7 +232,7 @@ class PromoCodeRepository:
                         INSERT INTO PromoCodes (code, is_active, max_uses, used_count, created_by, created_at, expires_at, last_redeemed_by)
                         VALUES (?, 1, ?, 0, ?, ?, ?, NULL)
                     """,
-                    (code, max_uses, created_by, datetime.utcnow().isoformat(), expires_at)
+                    (code, max_uses, created_by, datetime.datetime.now(datetime.timezone.utc).isoformat(), expires_at)
                 )
                 await connection.commit()
             return True
@@ -246,7 +246,7 @@ class PromoCodeRepository:
         Retrieve a promo code by its code string.
         """
         import aiosqlite
-        from data.config import sqlite_database_filepath
+        from ..data.config import sqlite_database_filepath
         from .models import PromoCode
         try:
             async with aiosqlite.connect(sqlite_database_filepath) as connection:
@@ -267,7 +267,7 @@ class PromoCodeRepository:
         Redeem a promo code for a user, increment usage, and deactivate if max uses reached.
         """
         import aiosqlite
-        from data.config import sqlite_database_filepath
+        from ..data.config import sqlite_database_filepath
         try:
             async with aiosqlite.connect(sqlite_database_filepath) as connection:
                 cursor = await connection.execute(

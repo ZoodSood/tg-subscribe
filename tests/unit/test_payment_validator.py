@@ -8,19 +8,19 @@ from src.bot.services.payment_validator import PaymentValidator
 def mock_dependencies():
     with patch("src.bot.services.payment_validator.rate_limiter") as mock_rate_limiter, \
          patch("src.bot.services.payment_validator.solana_service") as mock_solana_service, \
-         patch("src.bot.services.payment_validator.transactions") as mock_transactions, \
+         patch("src.bot.services.payment_validator.TransactionRepository") as mock_transaction_repo, \
          patch("src.bot.services.payment_validator.PriceService") as mock_price_service:
 
         # Configure async mocks
         mock_solana_service.is_valid_transaction_signature = AsyncMock(return_value=True)
-        mock_transactions.get = AsyncMock(return_value=None)
+        mock_transaction_repo.get = AsyncMock(return_value=None)
         mock_price_service.get_sol_price_in_usd = AsyncMock(return_value=Decimal("150.0"))
         mock_solana_service.check_transaction_for_correct_data = AsyncMock(return_value=True)
 
         yield {
             "rate_limiter": mock_rate_limiter,
             "solana_service": mock_solana_service,
-            "transactions": mock_transactions,
+            "transactions": mock_transaction_repo,
             "price_service": mock_price_service,
         }
 

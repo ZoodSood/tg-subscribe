@@ -1,5 +1,5 @@
 from aiogram import F, Router, types
-from ..database import users
+from ..database.repositories import UserRepository
 
 balance_router = Router()
 
@@ -8,7 +8,7 @@ balance_router = Router()
 async def show_balance(message: types.Message):
     if message.from_user is None:
         return
-    user = await users.get(telegram_id=message.from_user.id)
+    user = await UserRepository.get(telegram_id=message.from_user.id)
     if user is None:
         return
 

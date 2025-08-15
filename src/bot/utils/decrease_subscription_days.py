@@ -2,14 +2,14 @@ import typing
 from datetime import datetime
 
 from ..data.config import SUBSCRIBE_END_NOTIFICATION_DAYS
-from ..database import users
+from ..database.repositories import UserRepository
 
 if typing.TYPE_CHECKING:
     import aiogram
 
 
 async def task(bot: "aiogram.Bot"):
-    users_records = await users.get_all()
+    users_records = await UserRepository.get_all()
     for user in users_records:
         datetime_now = datetime.now()
         sub_end_date = datetime.strptime(user.days_sub_end, "%Y-%m-%d %H:%M:%S")

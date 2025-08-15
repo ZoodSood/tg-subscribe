@@ -21,3 +21,15 @@ CREATE TABLE IF NOT EXISTS "Transactions" (
 	"created_at_timestamp" INTEGER,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
+
+CREATE TABLE IF NOT EXISTS "PromoCodes" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "code" TEXT UNIQUE NOT NULL,
+    "is_active" INTEGER DEFAULT 1,
+    "max_uses" INTEGER DEFAULT 0,
+    "used_count" INTEGER DEFAULT 0,
+    "created_by" INTEGER,
+    "created_at" TEXT,
+    "expires_at" TEXT,
+    "last_redeemed_by" INTEGER
+);

@@ -26,20 +26,20 @@ async def dispatcher():
 def mock_services():
     with patch("src.bot.handlers.payment.PaymentValidator", spec=PaymentValidator) as mock_validator, \
          patch("src.bot.handlers.payment.PriceService", spec=PriceService) as mock_price_service, \
-         patch("src.bot.handlers.payment.transactions") as mock_transactions, \
-         patch("src.bot.handlers.payment.users") as mock_users:
+         patch("src.bot.handlers.payment.TransactionRepository") as mock_transaction_repo, \
+         patch("src.bot.handlers.payment.UserRepository") as mock_user_repo:
 
         mock_price_service.get_sol_price_in_usd = AsyncMock(return_value=Decimal("150.0"))
         mock_validator.validate_transaction = AsyncMock(return_value=(True, "Success"))
-        mock_transactions.create = AsyncMock()
-        mock_users.get = AsyncMock(return_value=MagicMock(days_sub_end=None))
-        mock_users.update_subscription_date = AsyncMock()
+        mock_transaction_repo.create = AsyncMock()
+        mock_user_repo.get = AsyncMock(return_value=MagicMock(days_sub_end=None))
+        mock_user_repo.update_subscription_date = AsyncMock()
 
         yield {
             "validator": mock_validator,
             "price_service": mock_price_service,
-            "transactions": mock_transactions,
-            "users": mock_users,
+            "transactions": mock_transaction_repo,
+            "users": mock_user_repo,
         }
 
 @pytest.mark.asyncio
