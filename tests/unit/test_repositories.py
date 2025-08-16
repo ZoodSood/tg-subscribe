@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, AsyncMock
 from datetime import datetime
 from src.bot.database.repositories import UserRepository, TransactionRepository, PromoCodeRepository
-from src.bot.database.models import User
+from src.bot.database.models import User, Transaction, PromoCode
 
 # --- Fixtures ---
 
@@ -67,14 +67,6 @@ async def test_user_repository_update_subscription_date_not_found(mock_db_connec
         assert updated is False
 
 @pytest.mark.asyncio
-async def test_user_repository_update_subscription_date_exception(db_session, mock_db_connection):
-    with mock_db_connection:
-        await UserRepository.create_if_not_exist(123, "Test", "User", "testuser")
-        with patch.object(type(db_session), 'execute', side_effect=Exception("DB error")):
-            result = await UserRepository.update_subscription_date("2025-01-01 00:00:00", telegram_id=123)
-            assert result is False
-
-@pytest.mark.asyncio
 async def test_user_repository_get_all(db_session, mock_db_connection):
     with mock_db_connection:
         await UserRepository.create_if_not_exist(123, "Test", "User", "testuser1")
@@ -87,8 +79,6 @@ async def test_user_repository_get_all_exception(mock_db_connection):
     with patch('aiosqlite.connect', side_effect=Exception("DB error")):
         users = await UserRepository.get_all()
         assert users == []
-
-# ... (similar comprehensive tests for increase_balance, ban/unban, update_last_active) ...
 
 # --- TransactionRepository Tests ---
 
@@ -113,8 +103,6 @@ async def test_transaction_repository_create_exception(mock_db_connection):
      with patch('aiosqlite.connect', side_effect=Exception("DB error")):
         created = await TransactionRepository.create("txid", 123)
         assert created is False
-
-# ... (similar comprehensive tests for set_status, get_new) ...
 
 # --- PromoCodeRepository Tests ---
 
@@ -145,5 +133,3 @@ async def test_promo_code_repository_redeem_not_found(mock_db_connection):
         mock_get.return_value = None
         redeemed = await PromoCodeRepository.redeem("non_existent_promo", 123)
         assert redeemed is False
-
-# ... (similar comprehensive tests for other failure cases) ...

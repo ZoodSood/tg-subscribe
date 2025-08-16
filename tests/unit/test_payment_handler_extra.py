@@ -1,0 +1,94 @@
+import pytest
+from unittest.mock import AsyncMock, patch
+from src.bot.handlers.payment import make_subscription, set_subscription_term, confirm_transfer, check_transaction, handle_payment_failed, prompt_promo_code, redeem_promo_code
+from aiogram.fsm.context import FSMContext
+from decimal import Decimal
+from src.bot.statesgroup import GetTxidFromUser
+from src.bot.database.models import User, PromoCode
+from aiogram.filters import CommandObject
+
+@pytest.fixture
+def mock_message():
+    message = AsyncMock()
+    message.from_user = AsyncMock()
+    message.from_user.id = 123
+    message.text = "test"
+    return message
+
+@pytest.fixture
+def mock_state():
+    state = AsyncMock(spec=FSMContext)
+    state.get_data = AsyncMock()
+    return state
+
+@pytest.fixture
+def mock_command():
+    command = AsyncMock(spec=CommandObject)
+    return command
+
+# Tests for make_subscription
+@pytest.mark.asyncio
+async def test_make_subscription(mock_message):
+    with patch('src.bot.handlers.payment.reply_keyboards.subscription_termins', new_callable=AsyncMock) as mock_keyboard:
+        await make_subscription(mock_message)
+        mock_keyboard.assert_called_once()
+        mock_message.answer.assert_called_once()
+
+# Tests for set_subscription_term
+@pytest.mark.asyncio
+@patch('src.bot.handlers.payment.SUBSCRIBE_AMOUNT_BY_PLANS', {1: 100})
+@patch('src.bot.handlers.payment.PriceService.get_sol_price_in_usd', new_callable=AsyncMock)
+async def test_set_subscription_term_valid(mock_price, mock_message, mock_state):
+    mock_message.text = "1 week"
+    mock_price.return_value = Decimal("200")
+    await set_subscription_term(mock_message, mock_state)
+    mock_state.set_data.assert_called_once_with({"subscription_term": 1})
+    assert "To subscribe for 1 week(s)" in mock_message.answer.call_args.kwargs['text']
+
+# Tests for confirm_transfer
+@pytest.mark.asyncio
+async def test_confirm_transfer(mock_message, mock_state):
+    await confirm_transfer(mock_message, mock_state)
+    mock_state.set_state.assert_called_once_with(GetTxidFromUser.state)
+
+# Tests for check_transaction
+@pytest.mark.asyncio
+@patch('src.bot.handlers.payment.PaymentValidator.validate_transaction', new_callable=AsyncMock)
+@patch('src.bot.handlers.payment.TransactionRepository')
+@patch('src.bot.handlers.payment.UserRepository')
+async def test_check_transaction_valid(mock_user_repo, mock_trans_repo, mock_validate, mock_message, mock_state):
+    mock_validate.return_value = (True, "Success")
+    mock_state.get_data.return_value = {"subscription_term": 1}
+    mock_user_repo.get = AsyncMock(return_value=User(id=1, telegram_id=123, first_name='Test', last_name='User', username='testuser', days_sub_end='2020-01-01 00:00:00', balance=0, invite_link='', is_banned=0, last_active=None))
+    mock_trans_repo.create = AsyncMock()
+    mock_user_repo.update_subscription_date = AsyncMock()
+    with patch('src.bot.handlers.payment.reply_keyboards.back_to_main_menu', new_callable=AsyncMock):
+        await check_transaction(mock_message, mock_state)
+        assert "Payment successful!" in mock_message.answer.call_args.kwargs['text']
+
+# Tests for handle_payment_failed
+@pytest.mark.asyncio
+async def test_handle_payment_failed_retry(mock_message, mock_state):
+    mock_message.text = "retry"
+    await handle_payment_failed(mock_message, mock_state)
+    mock_state.set_state.assert_called_once_with(GetTxidFromUser.state)
+
+# Tests for prompt_promo_code
+@pytest.mark.asyncio
+async def test_prompt_promo_code(mock_message, mock_state):
+    await prompt_promo_code(mock_message, mock_state)
+    mock_state.set_state.assert_called_once_with("awaiting_promo_code")
+
+# Tests for redeem_promo_code
+@pytest.mark.asyncio
+@patch('src.bot.handlers.payment.PromoCodeRepository')
+@patch('src.bot.handlers.payment.UserRepository')
+async def test_redeem_promo_code_success(mock_user_repo, mock_promo_repo, mock_message, mock_state):
+    mock_promo = PromoCode(id=1, code='PROMO', is_active=1, max_uses=10, used_count=0, created_by=123, created_at='', expires_at=None, last_redeemed_by=None)
+    mock_promo_repo.get_by_code = AsyncMock(return_value=mock_promo)
+    mock_promo_repo.redeem = AsyncMock(return_value=True)
+    mock_user_repo.get = AsyncMock(return_value=None)
+    mock_user_repo.update_subscription_date = AsyncMock()
+    with patch('src.bot.handlers.payment.reply_keyboards.back_to_main_menu', new_callable=AsyncMock):
+        await redeem_promo_code(mock_message, mock_state)
+        assert "Promo code redeemed!" in mock_message.answer.call_args.kwargs['text']
