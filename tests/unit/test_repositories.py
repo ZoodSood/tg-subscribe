@@ -133,3 +133,71 @@ async def test_promo_code_repository_redeem_not_found(mock_db_connection):
         mock_get.return_value = None
         redeemed = await PromoCodeRepository.redeem("non_existent_promo", 123)
         assert redeemed is False
+
+# --- More UserRepository Tests ---
+
+@pytest.mark.asyncio
+async def test_user_repository_increase_balance_by(db_session, mock_db_connection):
+    with mock_db_connection:
+        await UserRepository.create_if_not_exist(123, "Test", "User", "testuser")
+        user_before = await UserRepository.get(telegram_id=123)
+        await UserRepository.increase_balance_by(100, telegram_id=123)
+        user_after = await UserRepository.get(telegram_id=123)
+        assert user_after.balance == user_before.balance + 100
+
+@pytest.mark.asyncio
+async def test_user_repository_ban_and_unban_user(db_session, mock_db_connection):
+    with mock_db_connection:
+        await UserRepository.create_if_not_exist(123, "Test", "User", "testuser")
+        await UserRepository.ban_user(telegram_id=123)
+        user_banned = await UserRepository.get(telegram_id=123)
+        assert user_banned.is_banned == 1
+        await UserRepository.unban_user(telegram_id=123)
+        user_unbanned = await UserRepository.get(telegram_id=123)
+        assert user_unbanned.is_banned == 0
+
+@pytest.mark.asyncio
+async def test_user_repository_update_last_active(db_session, mock_db_connection):
+    with mock_db_connection:
+        await UserRepository.create_if_not_exist(123, "Test", "User", "testuser")
+        timestamp = "2025-01-01 12:34:56"
+        await UserRepository.update_last_active(telegram_id=123, timestamp=timestamp)
+        user = await UserRepository.get(telegram_id=123)
+        assert user.last_active == timestamp
+
+# --- More TransactionRepository Tests ---
+
+@pytest.mark.asyncio
+async def test_transaction_repository_set_status(db_session, mock_db_connection):
+    with mock_db_connection:
+        await TransactionRepository.create("txid_status", 123)
+        await TransactionRepository.set_status(True, txid="txid_status")
+        tx = await TransactionRepository.get(txid="txid_status")
+        assert tx.status == 1
+
+@pytest.mark.asyncio
+async def test_transaction_repository_get_new(db_session, mock_db_connection):
+    with mock_db_connection:
+        await TransactionRepository.create("new_tx", 123)
+        new_txs = await TransactionRepository.get_new()
+        assert len(new_txs) == 1
+        assert new_txs[0].txid == "new_tx"
+
+# --- More PromoCodeRepository Tests ---
+
+@pytest.mark.asyncio
+async def test_promo_code_repository_redeem_inactive(db_session, mock_db_connection):
+    with mock_db_connection:
+        await PromoCodeRepository.create("INACTIVE", 1, 123)
+        await db_session.execute("UPDATE PromoCodes SET is_active = 0 WHERE code = 'INACTIVE'")
+        await db_session.commit()
+        redeemed = await PromoCodeRepository.redeem("INACTIVE", 456)
+        assert redeemed is False
+
+@pytest.mark.asyncio
+async def test_promo_code_repository_redeem_max_uses(db_session, mock_db_connection):
+    with mock_db_connection:
+        await PromoCodeRepository.create("MAXED", 1, 123)
+        await PromoCodeRepository.redeem("MAXED", 456)
+        redeemed_again = await PromoCodeRepository.redeem("MAXED", 789)
+        assert redeemed_again is False
