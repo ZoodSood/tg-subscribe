@@ -4,7 +4,7 @@ from typing import Any, Dict
 from aiogram import BaseMiddleware
 from aiogram.types import Message
 from aiogram.types.base import TelegramObject
-from database import users
+from ..database.repositories import UserRepository
 
 
 class CreateUserMiddleware(BaseMiddleware):
@@ -16,7 +16,7 @@ class CreateUserMiddleware(BaseMiddleware):
         data: Dict[str, Any],
     ) -> Any:
         if message.from_user is not None:
-            await users.create_if_not_exist(
+            await UserRepository.create_if_not_exist(
                 message.from_user.id,
                 message.from_user.first_name,
                 message.from_user.last_name,

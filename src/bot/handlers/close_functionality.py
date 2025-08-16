@@ -1,6 +1,6 @@
 from aiogram import F, Router, types
-from filters import UserSubscribedFilter
-from keyboards import inline as inline_keyboard
+from ..filters import UserSubscribedFilter
+from ..keyboards import inline as inline_keyboard
 
 close_functionality_router = Router()
 

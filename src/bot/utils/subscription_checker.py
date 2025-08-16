@@ -1,24 +1,24 @@
 import typing
 from datetime import datetime, timedelta
 
-from data.config import (
+from ..data.config import (
     NUMBER_DAYS_FROM_ONE_PAYMENT,
     SUBSCRIBE_AMOUNT_BY_PLANS,
 )
-from database import transactions, users
-from keyboards import reply
-from utils import solana_service
+from ..database.repositories import TransactionRepository, UserRepository
+from ..keyboards import reply
+from . import solana_service
 import aiogram
 
 async def task(bot: "aiogram.Bot"):
-    transactions_records = await transactions.get_new()
+    transactions_records = await TransactionRepository.get_new()
     for transaction in transactions_records:
         if await solana_service.check_transaction_for_correct_data(
-            transaction.txid, SUBSCRIBE_AMOUNT_BY_PLANS[transaction.months]
+            transaction.txid, SUBSCRIBE_AMOUNT_BY_PLANS[transaction.weeks]
         ):
-            await transactions.set_status(True, database_id=transaction.id)
-            await users.update_subscription_date(
-                (datetime.now() + timedelta(days=NUMBER_DAYS_FROM_ONE_PAYMENT * transaction.months)).strftime("%Y-%m-%d"),
+            await TransactionRepository.set_status(True, database_id=transaction.id)
+            await UserRepository.update_subscription_date(
+                (datetime.now() + timedelta(days=NUMBER_DAYS_FROM_ONE_PAYMENT * transaction.weeks)).strftime("%Y-%m-%d %H:%M:%S"),
                 telegram_id=transaction.owner_telegram_id,
             )
             try:
@@ -30,7 +30,7 @@ async def task(bot: "aiogram.Bot"):
             except Exception as e:
                 print(f"Failed to send activation message to {transaction.owner_telegram_id}: {e}")
         else:
-            user = await users.get(telegram_id=transaction.owner_telegram_id)
+            user = await UserRepository.get(telegram_id=transaction.owner_telegram_id)
             if user:
                 try:
                     await bot.send_message(

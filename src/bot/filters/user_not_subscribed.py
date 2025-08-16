@@ -2,7 +2,7 @@ from datetime import datetime
 
 from aiogram import types
 from aiogram.filters import BaseFilter
-from database import users
+from ..database.repositories import UserRepository
 
 
 class UserNotSubscribedFilter(BaseFilter):
@@ -13,7 +13,7 @@ class UserNotSubscribedFilter(BaseFilter):
     async def __call__(self, message: types.Message) -> bool:
         if message.from_user is None:
             return False
-        user = await users.get(telegram_id=message.from_user.id)
+        user = await UserRepository.get(telegram_id=message.from_user.id)
         if user is None:
             return False
         return datetime.now() > datetime.strptime(

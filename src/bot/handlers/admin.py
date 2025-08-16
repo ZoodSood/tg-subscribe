@@ -3,12 +3,12 @@ from datetime import datetime
 from aiogram import Router, types
 from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from data.config import MAILING_TEXT, BOT_OWNER_ID
-from database import users
-from filters import IsAdminFilter
-from loader import bot
-from keyboards.inline import admin_dashboard_keyboard
-from database.repositories import PromoCodeRepository
+from ..data.config import MAILING_TEXT, BOT_OWNER_ID
+from ..database.repositories import UserRepository
+from ..filters import IsAdminFilter
+from ..loader import bot
+from ..keyboards.inline import admin_dashboard_keyboard
+from ..database.repositories import PromoCodeRepository
 from aiogram.filters import CommandObject
 
 admin_router = Router()
@@ -20,7 +20,7 @@ async def start_mailing_to_not_subscribed_users(message: types.Message):
 
     if message.from_user is None:
         return
-    users_records = await users.get_all()
+    users_records = await UserRepository.get_all()
     for user in users_records:
         if user.telegram_id == message.from_user.id:
             continue
@@ -109,7 +109,7 @@ async def list_promo_codes(message: types.Message):
         await message.answer("You are not authorized to view promo codes.")
         return
     import aiosqlite
-    from data.config import sqlite_database_filepath
+    from ..data.config import sqlite_database_filepath
     async with aiosqlite.connect(sqlite_database_filepath) as connection:
         cursor = await connection.execute("SELECT code, is_active, used_count, max_uses, expires_at FROM PromoCodes")
         rows = await cursor.fetchall()

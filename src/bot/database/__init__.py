@@ -2,7 +2,7 @@
 
 import aiofiles
 import aiosqlite
-from data.config import sqlite_database_filepath, sqlite_schema_filepath
+from ..data.config import sqlite_database_filepath, sqlite_schema_filepath
 
 
 async def get_database_schema_sql():

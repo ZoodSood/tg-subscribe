@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from aiogram import F, Router, types
-from database import users
+from ..database.repositories import UserRepository
 
 check_subscription_router = Router()
 
@@ -10,7 +10,7 @@ check_subscription_router = Router()
 async def check_subscription(message: types.Message):
     if message.from_user is None:
         return
-    user_database_record = await users.get(telegram_id=message.from_user.id)
+    user_database_record = await UserRepository.get(telegram_id=message.from_user.id)
     if user_database_record is None:
         return
 
