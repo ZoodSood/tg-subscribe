@@ -154,8 +154,8 @@ async def extend_subscription_handler(message: types.Message, command: CommandOb
                 current_end = datetime.strptime(user.days_sub_end, "%Y-%m-%d %H:%M:%S")
                 if current_end > now:
                     now = current_end
-            except Exception:
-                pass
+            except ValueError as e:
+                print(f"Warning: Could not parse subscription end date '{user.days_sub_end}' for user {user_id}. Error: {e}. Extending from current time.")
 
         new_end = now + timedelta(weeks=weeks)
         await users.update_subscription_date(new_end.strftime("%Y-%m-%d %H:%M:%S"), telegram_id=user_id)
