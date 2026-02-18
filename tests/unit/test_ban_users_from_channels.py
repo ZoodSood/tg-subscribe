@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from src.bot.utils.ban_users_from_channels import task
 from src.bot.database.models import User
-from datetime import datetime
+from datetime import datetime, timedelta
 
 @pytest.fixture
 def mock_bot():
@@ -19,8 +19,8 @@ def mock_bot():
 @patch('src.bot.utils.ban_users_from_channels.private_channels', {"Channel 1": {"id": -100}})
 async def test_ban_users_task(mock_user_repo, mock_bot):
     """Test the ban users task."""
-    future_date = datetime(2025, 12, 31).strftime("%Y-%m-%d %H:%M:%S")
-    past_date = datetime(2020, 1, 1).strftime("%Y-%m-%d %H:%M:%S")
+    future_date = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+    past_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
 
     users = [
         User(id=1, telegram_id=456, first_name='Subscribed', last_name='User', username='sub', days_sub_end=future_date, balance=0, invite_link='', is_banned=0, last_active=None),
@@ -40,7 +40,8 @@ async def test_ban_users_task(mock_user_repo, mock_bot):
 @patch('src.bot.utils.ban_users_from_channels.private_channels', {"Channel 1": {"id": -100}})
 async def test_ban_users_task_get_member_exception(mock_user_repo, mock_bot):
     """Test the task when get_chat_member raises an exception."""
-    past_date = datetime(2020, 1, 1).strftime("%Y-%m-%d %H:%M:%S")
+    from datetime import timedelta
+    past_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
     users = [User(id=1, telegram_id=789, first_name='NotSubscribed', last_name='User', username='notsub', days_sub_end=past_date, balance=0, invite_link='', is_banned=0, last_active=None)]
     mock_user_repo.get_all = AsyncMock(return_value=users)
     mock_bot.get_chat_member.side_effect = Exception("API error")
@@ -54,7 +55,8 @@ async def test_ban_users_task_get_member_exception(mock_user_repo, mock_bot):
 @patch('src.bot.utils.ban_users_from_channels.private_channels', {"Channel 1": {"id": -100}})
 async def test_ban_users_task_member_is_creator(mock_user_repo, mock_bot):
     """Test the task when the member is the creator."""
-    past_date = datetime(2020, 1, 1).strftime("%Y-%m-%d %H:%M:%S")
+    from datetime import timedelta
+    past_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
     users = [User(id=1, telegram_id=789, first_name='NotSubscribed', last_name='User', username='notsub', days_sub_end=past_date, balance=0, invite_link='', is_banned=0, last_active=None)]
     mock_user_repo.get_all = AsyncMock(return_value=users)
     # Re-create the mock bot inside this test to modify its return value for this specific test
@@ -71,7 +73,8 @@ async def test_ban_users_task_member_is_creator(mock_user_repo, mock_bot):
 @patch('src.bot.utils.ban_users_from_channels.private_channels', {"Channel 1": {"id": -100}})
 async def test_ban_users_task_ban_exception(mock_user_repo, mock_bot):
     """Test the task when ban_chat_member raises an exception."""
-    past_date = datetime(2020, 1, 1).strftime("%Y-%m-%d %H:%M:%S")
+    from datetime import timedelta
+    past_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
     users = [User(id=1, telegram_id=789, first_name='NotSubscribed', last_name='User', username='notsub', days_sub_end=past_date, balance=0, invite_link='', is_banned=0, last_active=None)]
     mock_user_repo.get_all = AsyncMock(return_value=users)
     mock_bot.ban_chat_member.side_effect = Exception("API error")

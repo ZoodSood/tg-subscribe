@@ -167,15 +167,15 @@ class TransactionRepository:
             return None
 
     @staticmethod
-    async def create(txid: str, user_telegram_id: int, weeks: int = 1) -> bool:
+    async def create(txid: str, user_telegram_id: int, weeks: int = 1, amount_sol: str = None) -> bool:
         from datetime import datetime
         try:
             async with aiosqlite.connect(sqlite_database_filepath) as connection:
                 await connection.execute(
                     f"""
-                        INSERT INTO {Transaction.get_table_name()} {Transaction.get_fields_for_sql_query()} VALUES (?, ?, ?, ?, ?)
+                        INSERT INTO {Transaction.get_table_name()} {Transaction.get_fields_for_sql_query()} VALUES (?, ?, ?, ?, ?, ?)
                     """,
-                    (txid, user_telegram_id, False, weeks, int(datetime.now().timestamp()))
+                    (txid, user_telegram_id, False, weeks, amount_sol, int(datetime.now().timestamp()))
                 )
                 await connection.commit()
             return True

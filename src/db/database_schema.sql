@@ -14,10 +14,11 @@ CREATE TABLE IF NOT EXISTS "Users" (
 
 CREATE TABLE IF NOT EXISTS "Transactions" (
 	"id"	INTEGER,
-	"txid"	TEXT,
+	"txid"	TEXT UNIQUE,
 	"owner_telegram_id" INTEGER,
 	"status" BOOLEAN,
 	"weeks" INTEGER,
+	"amount_sol" TEXT,
 	"created_at_timestamp" INTEGER,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );

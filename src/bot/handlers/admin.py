@@ -1,3 +1,4 @@
+import html
 from datetime import datetime
 
 from aiogram import Router, types
@@ -33,9 +34,10 @@ async def start_mailing_to_not_subscribed_users(message: types.Message):
             except Exception as e:
                 print(f"Failed to send mailing message to {user.telegram_id}: {e}")
             try:
+                safe_first_name = html.escape(user.first_name) if user.first_name else "User"
                 await message.answer(
                     text="The message was successfully sent to <a href='tg://user?id=%s'>%s</a>"
-                    % (user.telegram_id, user.first_name)
+                    % (user.telegram_id, safe_first_name)
                 )
             except Exception as e:
                 print(f"Failed to send confirmation to admin for {user.telegram_id}: {e}")

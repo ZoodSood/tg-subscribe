@@ -20,7 +20,7 @@ getcontext().prec = 18
 
 class PaymentValidator:
     @staticmethod
-    async def validate_transaction(txid: str, user_id: int, weeks: int) -> tuple[bool, str]:
+    async def validate_transaction(txid: str, user_id: int, weeks: int, expected_sol: Decimal = None) -> tuple[bool, str]:
         """
         Validates a Solana transaction for a subscription payment.
 
@@ -40,19 +40,24 @@ class PaymentValidator:
         if transaction is not None:
             return False, "This transaction has already been used."
 
-        # 4. Calculate required SOL amount based on current price
-        usd_amount = SUBSCRIBE_AMOUNT_BY_PLANS.get(weeks)
-        if not usd_amount:
-            logger.error(f"Invalid subscription plan (weeks={weeks}) for user {user_id}.")
-            return False, "Invalid subscription plan selected."
+        # 4. Determine required SOL amount
+        if expected_sol:
+            required_sol_amount = expected_sol
+            logger.info(f"Using expected SOL amount from state: {required_sol_amount:.8f} SOL")
+        else:
+            # Fallback to current price if not provided (e.g., background check)
+            usd_amount = SUBSCRIBE_AMOUNT_BY_PLANS.get(weeks)
+            if not usd_amount:
+                logger.error(f"Invalid subscription plan (weeks={weeks}) for user {user_id}.")
+                return False, "Invalid subscription plan selected."
 
-        sol_price_usd = await PriceService.get_sol_price_in_usd()
-        if not sol_price_usd:
-            logger.error("Could not fetch SOL price for validation.")
-            return False, "Could not fetch the current SOL price. Please try again later."
+            sol_price_usd = await PriceService.get_sol_price_in_usd()
+            if not sol_price_usd:
+                logger.error("Could not fetch SOL price for validation.")
+                return False, "Could not fetch the current SOL price. Please try again later."
 
-        required_sol_amount = Decimal(usd_amount) / Decimal(sol_price_usd)
-        logger.info(f"Required SOL for user {user_id}: {required_sol_amount:.8f} SOL (${usd_amount} @ ${sol_price_usd}/SOL)")
+            required_sol_amount = Decimal(usd_amount) / Decimal(sol_price_usd)
+            logger.info(f"Required SOL for user {user_id} (recalculated): {required_sol_amount:.8f} SOL (${usd_amount} @ ${sol_price_usd}/SOL)")
 
         # 5. Verify transaction on the blockchain
         is_correct = await solana_service.check_transaction_for_correct_data(

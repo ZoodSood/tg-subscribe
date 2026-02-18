@@ -32,6 +32,7 @@ def mock_services():
         mock_price_service.get_sol_price_in_usd = AsyncMock(return_value=Decimal("150.0"))
         mock_validator.validate_transaction = AsyncMock(return_value=(True, "Success"))
         mock_transaction_repo.create = AsyncMock()
+        mock_transaction_repo.set_status = AsyncMock()
         mock_user_repo.get = AsyncMock(return_value=MagicMock(days_sub_end=None))
         mock_user_repo.update_subscription_date = AsyncMock()
 
@@ -73,7 +74,7 @@ async def test_check_transaction_success(mock_answer, dispatcher, mock_services)
 
     state = dp.fsm.get_context(bot, user.id, chat.id)
     await state.set_state(GetTxidFromUser.state)
-    await state.set_data({"subscription_term": 1})
+    await state.set_data({"subscription_term": 1, "required_sol_amount": "0.66666667"})
 
     await payment.check_transaction(message, state)
 

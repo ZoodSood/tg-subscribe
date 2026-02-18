@@ -3,6 +3,7 @@ solana_service.py
 Utility functions for verifying Solana transactions using the solana-py library.
 """
 import re
+from datetime import datetime
 from decimal import Decimal, getcontext
 
 from logzero import logger
@@ -56,6 +57,13 @@ async def check_transaction_for_correct_data(
                 return False
 
             tx_data: EncodedTransactionWithStatusMeta = tx_response.value
+
+            # Check transaction age (e.g., must be within the last hour)
+            if tx_data.block_time:
+                current_timestamp = int(datetime.now().timestamp())
+                if current_timestamp - tx_data.block_time > 3600:
+                    logger.warning(f"Transaction {signature} is too old: {current_timestamp - tx_data.block_time} seconds ago.")
+                    return False
 
             if tx_data.meta and tx_data.meta.err:
                 logger.warning(f"Transaction {signature} failed with error: {tx_data.meta.err}")

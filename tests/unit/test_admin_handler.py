@@ -162,12 +162,15 @@ async def test_list_promo_codes_with_codes(mock_connect, mock_message):
 @patch('src.bot.handlers.admin.bot')
 async def test_start_mailing(mock_bot, mock_user_repo, mock_message):
     """Test the start_mailing handler."""
+    from datetime import datetime, timedelta
     mock_message.from_user.id = 123
+    future_date = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+    past_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
 
     users = [
-        User(id=1, telegram_id=123, first_name='Admin', last_name='User', username='admin', days_sub_end='2025-01-01 00:00:00', balance=0, invite_link='', is_banned=0, last_active=None),
-        User(id=2, telegram_id=456, first_name='Subscribed', last_name='User', username='sub', days_sub_end='2025-12-31 00:00:00', balance=0, invite_link='', is_banned=0, last_active=None),
-        User(id=3, telegram_id=789, first_name='NotSubscribed', last_name='User', username='notsub', days_sub_end='2020-01-01 00:00:00', balance=0, invite_link='', is_banned=0, last_active=None),
+        User(id=1, telegram_id=123, first_name='Admin', last_name='User', username='admin', days_sub_end=future_date, balance=0, invite_link='', is_banned=0, last_active=None),
+        User(id=2, telegram_id=456, first_name='Subscribed', last_name='User', username='sub', days_sub_end=future_date, balance=0, invite_link='', is_banned=0, last_active=None),
+        User(id=3, telegram_id=789, first_name='NotSubscribed', last_name='User', username='notsub', days_sub_end=past_date, balance=0, invite_link='', is_banned=0, last_active=None),
     ]
     mock_user_repo.get_all = AsyncMock(return_value=users)
     mock_bot.send_message = AsyncMock()

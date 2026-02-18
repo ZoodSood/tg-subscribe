@@ -1,6 +1,6 @@
 from aiogram import types
 from aiogram.filters import BaseFilter
-from ..data.config import ADMINS_ID_LIST
+from ..data.config import ADMINS_ID_LIST, BOT_OWNER_ID
 
 
 class IsAdminFilter(BaseFilter):
@@ -11,4 +11,4 @@ class IsAdminFilter(BaseFilter):
     async def __call__(self, message: types.Message) -> bool:
         if message.from_user is None:
             return False
-        return message.from_user.id in ADMINS_ID_LIST
+        return message.from_user.id in ADMINS_ID_LIST or message.from_user.id == BOT_OWNER_ID

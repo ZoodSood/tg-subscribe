@@ -184,7 +184,7 @@ async def test_transaction_repository_create_exception(mock_db_connection):
 @pytest.mark.asyncio
 async def test_transaction_repository_get_by_database_id(db_session, mock_db_connection):
     with mock_db_connection:
-        await db_session.execute("INSERT INTO Transactions (id, txid, owner_telegram_id, status, weeks, created_at_timestamp) VALUES (1, 'txid1', 123, 0, 1, 0)")
+        await db_session.execute("INSERT INTO Transactions (id, txid, owner_telegram_id, status, weeks, amount_sol, created_at_timestamp) VALUES (1, 'txid1', 123, 0, 1, '0.5', 0)")
         await db_session.commit()
         transaction = await TransactionRepository.get(database_id=1)
         assert transaction is not None

@@ -27,8 +27,10 @@ async def test_is_valid_transaction_signature_invalid():
 @patch("solana.rpc.async_api.AsyncClient.get_transaction", new_callable=AsyncMock)
 async def test_check_transaction_for_correct_data_success(mock_get_transaction, mock_from_string):
     """Tests a successful transaction validation."""
+    import time
     mock_tx_response = MagicMock()
     mock_tx_response.value = MagicMock()
+    mock_tx_response.value.block_time = int(time.time())
     mock_tx_response.value.meta.err = None
     mock_tx_response.value.transaction.message.instructions = [
         MagicMock(
@@ -57,8 +59,10 @@ async def test_check_transaction_for_correct_data_success(mock_get_transaction, 
 @patch("solana.rpc.async_api.AsyncClient.get_transaction", new_callable=AsyncMock)
 async def test_check_transaction_for_correct_data_failed_tx(mock_get_transaction, mock_from_string):
     """Tests a transaction that failed on-chain."""
+    import time
     mock_tx_response = MagicMock()
     mock_tx_response.value = MagicMock()
+    mock_tx_response.value.block_time = int(time.time())
     mock_tx_response.value.meta.err = "Some error"
     mock_get_transaction.return_value = mock_tx_response
 
@@ -95,8 +99,10 @@ async def test_check_transaction_not_found(mock_get_transaction, mock_from_strin
 @patch("solana.rpc.async_api.AsyncClient.get_transaction", new_callable=AsyncMock)
 async def test_check_transaction_with_deviation_success(mock_get_transaction, mock_from_string):
     """Tests a successful transaction validation with amount deviation."""
+    import time
     mock_tx_response = MagicMock()
     mock_tx_response.value = MagicMock()
+    mock_tx_response.value.block_time = int(time.time())
     mock_tx_response.value.meta.err = None
     mock_tx_response.value.transaction.message.instructions = [
         MagicMock(
@@ -119,8 +125,10 @@ async def test_check_transaction_with_deviation_success(mock_get_transaction, mo
 @patch("solana.rpc.async_api.AsyncClient.get_transaction", new_callable=AsyncMock)
 async def test_check_transaction_no_valid_instruction(mock_get_transaction, mock_from_string):
     """Tests a transaction with no valid transfer instruction to our wallet."""
+    import time
     mock_tx_response = MagicMock()
     mock_tx_response.value = MagicMock()
+    mock_tx_response.value.block_time = int(time.time())
     mock_tx_response.value.meta.err = None
     mock_tx_response.value.transaction.message.instructions = [
         MagicMock(program="other_program", parsed={})
