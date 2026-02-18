@@ -43,8 +43,8 @@ async def task(bot: "aiogram.Bot"):
                     current_end = datetime.strptime(user.days_sub_end, "%Y-%m-%d %H:%M:%S")
                     if current_end > now:
                         now = current_end
-                except Exception:
-                    pass
+                except (ValueError, TypeError) as e:
+                    print(f"Could not parse subscription end date for user {transaction.owner_telegram_id}: {e}")
 
             new_end = now + timedelta(weeks=transaction.weeks)
             await UserRepository.update_subscription_date(
