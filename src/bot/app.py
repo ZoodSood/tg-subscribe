@@ -9,6 +9,7 @@ from handlers import (
     close_functionality_router,
     payment_router,
     start_router,
+    dashboard_router,
 )
 from loader import bot, dp, tasks_scheduler
 from middlewares import CreateUserMiddleware, UpdateLoggerMiddleware
@@ -20,6 +21,7 @@ async def on_startup():
 
     dp.include_routers(
         admin_router,
+        dashboard_router,
         start_router,
         payment_router,
         close_functionality_router,

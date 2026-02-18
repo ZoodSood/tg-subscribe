@@ -2,7 +2,7 @@ from aiogram import F, Router, types
 from aiogram.types import ChatInviteLink
 from loader import bot
 from database import users
-from data.config import CHANNELS  # Import channel config
+from data.config import private_channels  # Import channel config
 import logging
 from datetime import datetime, timedelta
 
@@ -60,7 +60,7 @@ async def invite_link_handler(message: types.Message):
     user = await users.get(telegram_id=message.from_user.id)
     if user is None:
         return
-    channel_id = list(CHANNELS.values())[0]["id"]
+    channel_id = list(private_channels.values())[0]["id"]
     # Check if user already has a valid invite link
     valid_link = False
     if user.invite_link:

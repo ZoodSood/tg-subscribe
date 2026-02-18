@@ -17,9 +17,8 @@ class User:
 
     @staticmethod
     def get_fields_for_sql_query():
-        return "(%s)" % ", ".join(
-            [field.name for field in dataclasses.fields(User)][1:]
-        )
+        fields = [field.name for field in dataclasses.fields(User)][1:]
+        return f"({', '.join(fields)})"
 
     @staticmethod
     def get_table_name():
@@ -37,9 +36,8 @@ class Transaction:
 
     @staticmethod
     def get_fields_for_sql_query():
-        return "(%s)" % ", ".join(
-            [field.name for field in dataclasses.fields(Transaction)][1:]
-        )
+        fields = [field.name for field in dataclasses.fields(Transaction)][1:]
+        return f"({', '.join(fields)})"
 
     @staticmethod
     def get_table_name():
@@ -72,9 +70,8 @@ class PromoCode:
 
     @staticmethod
     def get_fields_for_sql_query():
-        return "(%s)" % ", ".join(
-            [field.name for field in dataclasses.fields(PromoCode)][1:]
-        )
+        fields = [field.name for field in dataclasses.fields(PromoCode)][1:]
+        return f"({', '.join(fields)})"
 
     @staticmethod
     def get_table_name():

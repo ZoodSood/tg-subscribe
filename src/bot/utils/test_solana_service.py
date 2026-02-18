@@ -1,48 +1,78 @@
-"""
-Unit tests for solana_service.py (Solana payment and validation logic).
-Mocks Solana API responses for reliability.
-"""
-import unittest
-from unittest.mock import patch, MagicMock
-from src.bot.utils import solana_service
+import pytest
+from unittest.mock import patch, AsyncMock
+from utils.solana_service import is_valid_transaction_signature, check_transaction_for_correct_data
 
-class TestSolanaService(unittest.TestCase):
-    def setUp(self):
-        # Example: set up test wallet addresses, signatures, etc.
-        self.valid_signature = "test_signature"
-        self.invalid_signature = "bad_signature"
-        self.wallet = "test_wallet"
-        self.amount = 1.23
+@pytest.mark.asyncio
+async def test_is_valid_transaction_signature():
+    # A valid Solana signature is base58 and 87-88 characters long
+    valid_sig = "5V9Y1v2J8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z"
+    # Ensure it's 88 chars for the test
+    valid_sig = valid_sig + "A" * (88 - len(valid_sig))
+    assert await is_valid_transaction_signature(valid_sig) == True
+    assert await is_valid_transaction_signature("invalid") == False
 
-    @patch("src.bot.utils.solana_service.requests.post")
-    def test_validate_transaction_success(self, mock_post):
-        # Mock a successful Solana API response
-        mock_post.return_value.json.return_value = {
-            "result": {
-                "value": {
-                    "meta": {"err": None},
-                    "transaction": {"message": {"accountKeys": [self.wallet]}, "signatures": [self.valid_signature]}
-                }
+@pytest.mark.asyncio
+@patch("aiohttp.ClientSession.get")
+async def test_check_transaction_success(mock_get):
+    from data.config import SOLANA_WALLET_ADDRESS
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.json.return_value = {
+        "parsedInstruction": [
+            {
+                "type": "transfer",
+                "destination": SOLANA_WALLET_ADDRESS,
+                "lamports": 200 * 1e9
             }
-        }
-        mock_post.return_value.status_code = 200
-        result = solana_service.validate_transaction(self.valid_signature, self.wallet, self.amount)
-        self.assertTrue(result)
+        ]
+    }
+    mock_get.return_value.__aenter__.return_value = mock_response
 
-    @patch("src.bot.utils.solana_service.requests.post")
-    def test_validate_transaction_failure(self, mock_post):
-        # Mock a failed Solana API response (invalid signature)
-        mock_post.return_value.json.return_value = {"result": {"value": None}}
-        mock_post.return_value.status_code = 200
-        result = solana_service.validate_transaction(self.invalid_signature, self.wallet, self.amount)
-        self.assertFalse(result)
+    result = await check_transaction_for_correct_data("5V9Y1v2J8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7zA", 200)
+    assert result == True
 
-    @patch("src.bot.utils.solana_service.requests.post")
-    def test_validate_transaction_api_error(self, mock_post):
-        # Simulate API/network error
-        mock_post.side_effect = Exception("API error")
-        result = solana_service.validate_transaction(self.valid_signature, self.wallet, self.amount)
-        self.assertFalse(result)
+@pytest.mark.asyncio
+@patch("aiohttp.ClientSession.get")
+async def test_check_transaction_failure_wrong_amount(mock_get):
+    from data.config import SOLANA_WALLET_ADDRESS
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.json.return_value = {
+        "parsedInstruction": [
+            {
+                "type": "transfer",
+                "destination": SOLANA_WALLET_ADDRESS,
+                "lamports": 100 * 1e9
+            }
+        ]
+    }
+    mock_get.return_value.__aenter__.return_value = mock_response
 
-if __name__ == "__main__":
-    unittest.main()
+    result = await check_transaction_for_correct_data("5V9Y1v2J8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7zA", 200)
+    assert result == False
+
+@pytest.mark.asyncio
+@patch("aiohttp.ClientSession.get")
+async def test_check_transaction_deviation_success(mock_get):
+    from data.config import SOLANA_WALLET_ADDRESS
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.json.return_value = {
+        "parsedInstruction": [
+            {
+                "type": "transfer",
+                "destination": SOLANA_WALLET_ADDRESS,
+                "lamports": 199.995 * 1e9
+            }
+        ]
+    }
+    mock_get.return_value.__aenter__.return_value = mock_response
+
+    # Amount is 200, actual is 199.995, deviation is 0.01. Should be valid.
+    result = await check_transaction_for_correct_data(
+        "5V9Y1v2J8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7z8v7zA",
+        200,
+        deviation_enabled=True,
+        deviation_value=0.01
+    )
+    assert result == True

@@ -2,6 +2,7 @@ import os
 
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
+from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from data.config import BOT_TOKEN
@@ -16,9 +17,9 @@ if not os.path.exists("logs/"):
     os.system("mkdir logs")
 logfile("logs/bot.log")
 
-bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
+bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 storage = MemoryStorage()
-dp = Dispatcher(bot=bot, storage=storage)
+dp = Dispatcher(storage=storage)
 
 tasks_scheduler = AsyncIOScheduler()
 tasks_scheduler.add_job(subscription_checker.task, "interval", minutes=1, args=(bot,))

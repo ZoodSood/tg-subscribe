@@ -6,7 +6,7 @@ import logging
 from typing import List, Optional, Union
 import aiosqlite
 from data.config import sqlite_database_filepath
-from .models import User, Transaction
+from .models import User, Transaction, PromoCode
 
 class UserRepository:
     """
@@ -224,7 +224,7 @@ class PromoCodeRepository:
         """
         import aiosqlite
         from data.config import sqlite_database_filepath
-        from datetime import datetime
+        from datetime import datetime, timezone
         try:
             async with aiosqlite.connect(sqlite_database_filepath) as connection:
                 await connection.execute(
@@ -232,7 +232,7 @@ class PromoCodeRepository:
                         INSERT INTO PromoCodes (code, is_active, max_uses, used_count, created_by, created_at, expires_at, last_redeemed_by)
                         VALUES (?, 1, ?, 0, ?, ?, ?, NULL)
                     """,
-                    (code, max_uses, created_by, datetime.utcnow().isoformat(), expires_at)
+                    (code, max_uses, created_by, datetime.now(timezone.utc).isoformat(), expires_at)
                 )
                 await connection.commit()
             return True
@@ -291,3 +291,20 @@ class PromoCodeRepository:
         except Exception as e:
             logging.error(f"PromoCodeRepository.redeem error: {e}")
             return False
+
+    @staticmethod
+    async def get_all() -> List[PromoCode]:
+        """
+        List all promo codes.
+        """
+        import aiosqlite
+        from data.config import sqlite_database_filepath
+        from .models import PromoCode
+        try:
+            async with aiosqlite.connect(sqlite_database_filepath) as connection:
+                cursor = await connection.execute(f"SELECT * FROM PromoCodes")
+                rows = await cursor.fetchall()
+                return [PromoCode(*row) for row in rows]
+        except aiosqlite.Error as e:
+            logging.error(f"PromoCodeRepository.get_all database error: {e}")
+            return []
