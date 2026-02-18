@@ -123,7 +123,13 @@ async def check_transaction(message: types.Message, state: FSMContext):
 
     # If validation is successful, create the transaction record and update subscription
     try:
-        await TransactionRepository.create(txid, user_id, weeks, amount_sol=expected_sol)
+        success = await TransactionRepository.create(txid, user_id, weeks, amount_sol=expected_sol)
+        if not success:
+            await message.answer(
+                text="This transaction has already been processed or there was an error. If you believe this is a mistake, please contact support.",
+                reply_markup=await reply_keyboards.back_to_main_menu(),
+            )
+            return
 
         from datetime import datetime, timedelta
         user = await UserRepository.get(telegram_id=user_id)

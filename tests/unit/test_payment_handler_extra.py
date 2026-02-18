@@ -95,7 +95,7 @@ async def test_check_transaction_valid(mock_user_repo, mock_trans_repo, mock_val
     mock_validate.return_value = (True, "Success")
     mock_state.get_data.return_value = {"subscription_term": 1, "required_sol_amount": "0.5"}
     mock_user_repo.get = AsyncMock(return_value=User(id=1, telegram_id=123, first_name='Test', last_name='User', username='testuser', days_sub_end='2020-01-01 00:00:00', balance=0, invite_link='', is_banned=0, last_active=None))
-    mock_trans_repo.create = AsyncMock()
+    mock_trans_repo.create = AsyncMock(return_value=True)
     mock_trans_repo.set_status = AsyncMock()
     mock_user_repo.update_subscription_date = AsyncMock()
     with patch('src.bot.handlers.payment.reply_keyboards.back_to_main_menu', new_callable=AsyncMock):
@@ -129,7 +129,7 @@ async def test_check_transaction_invalid_date(mock_user_repo, mock_trans_repo, m
     mock_validate.return_value = (True, "Success")
     mock_state.get_data.return_value = {"subscription_term": 1, "required_sol_amount": "0.5"}
     mock_user_repo.get = AsyncMock(return_value=User(id=1, telegram_id=123, first_name='Test', last_name='User', username='testuser', days_sub_end='invalid-date', balance=0, invite_link='', is_banned=0, last_active=None))
-    mock_trans_repo.create = AsyncMock()
+    mock_trans_repo.create = AsyncMock(return_value=True)
     mock_trans_repo.set_status = AsyncMock()
     mock_user_repo.update_subscription_date = AsyncMock()
     with patch('src.bot.handlers.payment.reply_keyboards.back_to_main_menu', new_callable=AsyncMock):
@@ -144,7 +144,7 @@ async def test_check_transaction_db_error(mock_user_repo, mock_trans_repo, mock_
     mock_validate.return_value = (True, "Success")
     mock_state.get_data.return_value = {"subscription_term": 1, "required_sol_amount": "0.5"}
     mock_user_repo.get = AsyncMock(return_value=User(id=1, telegram_id=123, first_name='Test', last_name='User', username='testuser', days_sub_end='2020-01-01 00:00:00', balance=0, invite_link='', is_banned=0, last_active=None))
-    mock_trans_repo.create = AsyncMock()
+    mock_trans_repo.create = AsyncMock(return_value=True)
     mock_trans_repo.set_status = AsyncMock()
     mock_user_repo.update_subscription_date.side_effect = Exception("DB error")
     with patch('src.bot.handlers.payment.reply_keyboards.back_to_main_menu', new_callable=AsyncMock):

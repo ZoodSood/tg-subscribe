@@ -31,7 +31,7 @@ def mock_services():
 
         mock_price_service.get_sol_price_in_usd = AsyncMock(return_value=Decimal("150.0"))
         mock_validator.validate_transaction = AsyncMock(return_value=(True, "Success"))
-        mock_transaction_repo.create = AsyncMock()
+        mock_transaction_repo.create = AsyncMock(return_value=True)
         mock_transaction_repo.set_status = AsyncMock()
         mock_user_repo.get = AsyncMock(return_value=MagicMock(days_sub_end=None))
         mock_user_repo.update_subscription_date = AsyncMock()

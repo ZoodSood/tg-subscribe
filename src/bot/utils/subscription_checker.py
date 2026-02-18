@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 
 from decimal import Decimal
 from ..data.config import (
+    AMOUNT_DEVIATION_ENABLED,
+    AMOUNT_DEVIATION_VALUE,
     NUMBER_DAYS_FROM_ONE_PAYMENT,
     SUBSCRIBE_AMOUNT_BY_PLANS,
 )
@@ -27,7 +29,10 @@ async def task(bot: "aiogram.Bot"):
             required_sol_amount = Decimal(usd_amount) / Decimal(sol_price_usd)
 
         if await solana_service.check_transaction_for_correct_data(
-            transaction.txid, required_sol_amount
+            transaction.txid,
+            required_sol_amount,
+            AMOUNT_DEVIATION_ENABLED,
+            Decimal(AMOUNT_DEVIATION_VALUE),
         ):
             await TransactionRepository.set_status(True, database_id=transaction.id)
 
