@@ -56,28 +56,6 @@ async def admin_dashboard(message: types.Message):
         print(f"Failed to send admin dashboard: {e}")
 
 
-@admin_router.callback_query(lambda c: c.data and c.data.startswith("admin_"))
-async def admin_dashboard_callback(call: types.CallbackQuery):
-    """Handles admin dashboard button callbacks. Only accessible by the bot owner."""
-    if call.from_user is None or call.from_user.id != BOT_OWNER_ID:
-        try:
-            await call.answer("Not authorized.", show_alert=True)
-        except Exception as e:
-            print(f"Failed to send not authorized callback: {e}")
-        return
-    try:
-        if call.data == "admin_view_users":
-            await call.message.answer("User list feature coming soon.")
-        elif call.data == "admin_manage_subs":
-            await call.message.answer("Manage subscriptions feature coming soon.")
-        elif call.data == "admin_analytics":
-            await call.message.answer("Analytics feature coming soon.")
-        else:
-            await call.answer("Unknown action.", show_alert=True)
-    except Exception as e:
-        print(f"Failed to handle admin dashboard callback: {e}")
-
-
 @admin_router.message(IsAdminFilter(), Command("create_promo"))
 async def create_promo_code(message: types.Message, command: CommandObject):
     """
@@ -108,15 +86,95 @@ async def list_promo_codes(message: types.Message):
     if message.from_user is None or message.from_user.id != BOT_OWNER_ID:
         await message.answer("You are not authorized to view promo codes.")
         return
-    import aiosqlite
-    from data.config import sqlite_database_filepath
-    async with aiosqlite.connect(sqlite_database_filepath) as connection:
-        cursor = await connection.execute("SELECT code, is_active, used_count, max_uses, expires_at FROM PromoCodes")
-        rows = await cursor.fetchall()
-        if not rows:
-            await message.answer("No promo codes found.")
+
+    promos = await PromoCodeRepository.get_all()
+    if not promos:
+        await message.answer("No promo codes found.")
+        return
+
+    text = "<b>Promo Codes:</b>\n"
+    for p in promos:
+        text += f"Code: <code>{p.code}</code> | Active: {bool(p.is_active)} | Used: {p.used_count}/{p.max_uses or '∞'} | Expires: {p.expires_at or 'never'}\n"
+    await message.answer(text)
+
+
+@admin_router.message(IsAdminFilter(), Command("ban"))
+async def ban_user_handler(message: types.Message, command: CommandObject):
+    """Bans a user by Telegram ID."""
+    if message.from_user is None or message.from_user.id != BOT_OWNER_ID:
+        return
+    if not command.args:
+        await message.answer("Usage: /ban <telegram_id>")
+        return
+    try:
+        user_id = int(command.args.split()[0])
+        await users.ban_user(telegram_id=user_id)
+        await message.answer(f"User <code>{user_id}</code> has been banned.")
+    except ValueError:
+        await message.answer("Invalid Telegram ID.")
+
+
+@admin_router.message(IsAdminFilter(), Command("unban"))
+async def unban_user_handler(message: types.Message, command: CommandObject):
+    """Unbans a user by Telegram ID."""
+    if message.from_user is None or message.from_user.id != BOT_OWNER_ID:
+        return
+    if not command.args:
+        await message.answer("Usage: /unban <telegram_id>")
+        return
+    try:
+        user_id = int(command.args.split()[0])
+        await users.unban_user(telegram_id=user_id)
+        await message.answer(f"User <code>{user_id}</code> has been unbanned.")
+    except ValueError:
+        await message.answer("Invalid Telegram ID.")
+
+
+@admin_router.message(IsAdminFilter(), Command("extend"))
+async def extend_subscription_handler(message: types.Message, command: CommandObject):
+    """Extends a user's subscription by a number of weeks."""
+    if message.from_user is None or message.from_user.id != BOT_OWNER_ID:
+        return
+    args = command.args.split() if command.args else []
+    if len(args) < 2:
+        await message.answer("Usage: /extend <telegram_id> <weeks>")
+        return
+    try:
+        user_id = int(args[0])
+        weeks = int(args[1])
+        user = await users.get(telegram_id=user_id)
+        if not user:
+            await message.answer("User not found.")
             return
-        text = "<b>Promo Codes:</b>\n"
-        for row in rows:
-            text += f"Code: <code>{row[0]}</code> | Active: {bool(row[1])} | Used: {row[2]}/{row[3] or '∞'} | Expires: {row[4] or 'never'}\n"
-        await message.answer(text)
+
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        if user.days_sub_end:
+            try:
+                current_end = datetime.strptime(user.days_sub_end, "%Y-%m-%d %H:%M:%S")
+                if current_end > now:
+                    now = current_end
+            except Exception:
+                pass
+
+        new_end = now + timedelta(weeks=weeks)
+        await users.update_subscription_date(new_end.strftime("%Y-%m-%d %H:%M:%S"), telegram_id=user_id)
+        await message.answer(f"Subscription for <code>{user_id}</code> extended by {weeks} weeks until <code>{new_end.strftime('%Y-%m-%d %H:%M:%S')}</code>.")
+    except ValueError:
+        await message.answer("Invalid input. Usage: /extend <telegram_id> <weeks>")
+
+
+@admin_router.message(IsAdminFilter(), Command("revoke"))
+async def revoke_subscription_handler(message: types.Message, command: CommandObject):
+    """Revokes a user's subscription."""
+    if message.from_user is None or message.from_user.id != BOT_OWNER_ID:
+        return
+    if not command.args:
+        await message.answer("Usage: /revoke <telegram_id>")
+        return
+    try:
+        user_id = int(command.args.split()[0])
+        await users.update_subscription_date("2000-01-01 00:00:00", telegram_id=user_id)
+        await message.answer(f"Subscription for <code>{user_id}</code> has been revoked.")
+    except ValueError:
+        await message.answer("Invalid Telegram ID.")

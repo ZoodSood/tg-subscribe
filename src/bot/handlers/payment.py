@@ -11,6 +11,8 @@ from aiogram.filters import CommandObject
 
 payment_router = Router()
 
+VALID_SUBSCRIPTION_TERMS = list(SUBSCRIBE_AMOUNT_BY_PLANS.keys())
+
 # --- Per-user wallet feature (currently disabled) ---
 # from utils import per_user_wallet_service
 # PER_USER_WALLET_ENABLED = False  # Set to True to enable per-user wallet generation

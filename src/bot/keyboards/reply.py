@@ -50,6 +50,16 @@ async def back_to_main_menu() -> types.ReplyKeyboardMarkup:
     )
 
 
+async def retry_or_cancel() -> types.ReplyKeyboardMarkup:
+    return types.ReplyKeyboardMarkup(
+        keyboard=[
+            [types.KeyboardButton(text="Retry payment")],
+            [types.KeyboardButton(text="Back to main menu")],
+        ],
+        resize_keyboard=True,
+    )
+
+
 async def subscription_termins(plans: Iterable[int]) -> types.ReplyKeyboardMarkup:
     return types.ReplyKeyboardMarkup(
         keyboard=[

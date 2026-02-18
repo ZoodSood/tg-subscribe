@@ -6,3 +6,4 @@ from .close_functionality import close_functionality_router
 from .payment import payment_router
 from .invite import invite_router
 from .start import start_router
+from .dashboard import dashboard_router

@@ -12,46 +12,37 @@ async def get(
 ) -> Union[Transaction, None]:
     async with aiosqlite.connect(sqlite_database_filepath) as connection:
         if database_id is not None:
-            sql_query = "SELECT * FROM %s WHERE id=%s" % (
-                Transaction.get_table_name(),
-                database_id,
-            )
+            sql_query = f"SELECT * FROM {Transaction.get_table_name()} WHERE id=?"
+            params = (database_id,)
         elif txid is not None:
-            sql_query = "SELECT * FROM %s WHERE txid='%s'" % (
-                Transaction.get_table_name(),
-                txid,
-            )
+            sql_query = f"SELECT * FROM {Transaction.get_table_name()} WHERE txid=?"
+            params = (txid,)
         else:
             return None
 
-        cursor = await connection.execute(sql_query)
+        cursor = await connection.execute(sql_query, params)
         row = await cursor.fetchone()
         if row is None:
-            return row
+            return None
 
         return Transaction(*row)
 
 
 async def create(txid: str, user_telegram_id: int, weeks: int = 1) -> None:
     async with aiosqlite.connect(sqlite_database_filepath) as connection:
-        await connection.execute(
-            """
-                INSERT INTO %s
-                    %s
-                VALUES
-                    ('%s', %s, %s, %s, %s)
-                ;
-            """
-            % (
-                Transaction.get_table_name(),
-                Transaction.get_fields_for_sql_query(),
-                txid,
-                user_telegram_id,
-                False,
-                weeks,
-                int(datetime.now().timestamp()),
-            )
+        sql_query = f"""
+            INSERT INTO {Transaction.get_table_name()}
+            {Transaction.get_fields_for_sql_query()}
+            VALUES (?, ?, ?, ?, ?)
+        """
+        params = (
+            txid,
+            user_telegram_id,
+            False,
+            weeks,
+            int(datetime.now().timestamp()),
         )
+        await connection.execute(sql_query, params)
         await connection.commit()
 
 
@@ -63,29 +54,31 @@ async def set_status(
         return None
 
     async with aiosqlite.connect(sqlite_database_filepath) as connection:
-        sql_query = "UPDATE %s SET status=%s WHERE id=%s" % (
-            Transaction.get_table_name(),
-            status,
-            transaction.id,
-        )
-
-        await connection.execute(sql_query)
+        sql_query = f"UPDATE {Transaction.get_table_name()} SET status=? WHERE id=?"
+        await connection.execute(sql_query, (status, transaction.id))
         await connection.commit()
 
 
 async def get_new() -> List[Transaction]:
     async with aiosqlite.connect(sqlite_database_filepath) as connection:
-        sql_query = """
-            SELECT * FROM %s
-            WHERE status=%s
-            AND created_at_timestamp >= %s
-        """ % (
-            Transaction.get_table_name(),
+        sql_query = f"""
+            SELECT * FROM {Transaction.get_table_name()}
+            WHERE status=?
+            AND created_at_timestamp >= ?
+        """
+        params = (
             False,
             int((datetime.now() - timedelta(minutes=20)).timestamp()),
         )
 
-        cursor = await connection.execute(sql_query)
+        cursor = await connection.execute(sql_query, params)
         rows = await cursor.fetchall()
 
+        return [Transaction(*row) for row in rows]
+
+async def get_all() -> List[Transaction]:
+    async with aiosqlite.connect(sqlite_database_filepath) as connection:
+        sql_query = f"SELECT * FROM {Transaction.get_table_name()}"
+        cursor = await connection.execute(sql_query)
+        rows = await cursor.fetchall()
         return [Transaction(*row) for row in rows]

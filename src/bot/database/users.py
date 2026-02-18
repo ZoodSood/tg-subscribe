@@ -6,9 +6,6 @@ from data.config import sqlite_database_filepath
 from .models import User
 
 
-# Removed duplicate and unsafe get function. Use the parameterized version below.
-
-
 async def get(
     database_id: Optional[int] = None, telegram_id: Optional[int] = None
 ) -> Union[User, None]:
@@ -41,13 +38,8 @@ async def update_subscription_date(
         return None
 
     async with aiosqlite.connect(sqlite_database_filepath) as connection:
-        sql_query = "UPDATE %s SET days_sub_end='%s' WHERE id=%s" % (
-            User.get_table_name(),
-            date,
-            user.id,
-        )
-
-        await connection.execute(sql_query)
+        sql_query = f"UPDATE {User.get_table_name()} SET days_sub_end=? WHERE id=?"
+        await connection.execute(sql_query, (date, user.id))
         await connection.commit()
 
 
@@ -61,26 +53,21 @@ async def create_if_not_exist(
     record = await get(telegram_id=telegram_id)
     if record is None:
         async with aiosqlite.connect(sqlite_database_filepath) as connection:
-            await connection.execute(
-                """
-                    INSERT INTO %s
-                        %s
-                    VALUES
-                        (%s, '%s', '%s', '%s', datetime('now'), %s, %s, '%s')
-                    ;
-                """
-                % (
-                    User.get_table_name(),
-                    User.get_fields_for_sql_query(),
-                    telegram_id,
-                    firstname,
-                    lastname,
-                    username,
-                    0,
-                    0,
-                    invite_link or '',
-                )
+            sql_query = f"""
+                INSERT INTO {User.get_table_name()}
+                {User.get_fields_for_sql_query()}
+                VALUES (?, ?, ?, ?, datetime('now'), ?, ?, ?)
+            """
+            params = (
+                telegram_id,
+                firstname,
+                lastname,
+                username,
+                0,
+                0,
+                invite_link or '',
             )
+            await connection.execute(sql_query, params)
             await connection.commit()
 
 
@@ -94,22 +81,16 @@ async def update_invite_link(
         return
 
     async with aiosqlite.connect(sqlite_database_filepath) as connection:
-        sql_query = "UPDATE %s SET invite_link='%s' WHERE id=%s" % (
-            User.get_table_name(),
-            invite_link,
-            user.id,
-        )
-        await connection.execute(sql_query)
+        sql_query = f"UPDATE {User.get_table_name()} SET invite_link=? WHERE id=?"
+        await connection.execute(sql_query, (invite_link, user.id))
         await connection.commit()
 
 
 async def get_all() -> List[User]:
     async with aiosqlite.connect(sqlite_database_filepath) as connection:
-        sql_query = "SELECT * FROM %s" % User.get_table_name()
-
+        sql_query = f"SELECT * FROM {User.get_table_name()}"
         cursor = await connection.execute(sql_query)
         rows = await cursor.fetchall()
-
         return [User(*row) for row in rows]
 
 
@@ -123,13 +104,8 @@ async def increase_balance_by(
         return
 
     async with aiosqlite.connect(sqlite_database_filepath) as connection:
-        sql_query = "UPDATE %s SET balance=%s WHERE id=%s" % (
-            User.get_table_name(),
-            user.balance + points,
-            user.id,
-        )
-
-        await connection.execute(sql_query)
+        sql_query = f"UPDATE {User.get_table_name()} SET balance=? WHERE id=?"
+        await connection.execute(sql_query, (user.balance + points, user.id))
         await connection.commit()
 
 
@@ -141,11 +117,8 @@ async def ban_user(database_id: Optional[int] = None, telegram_id: Optional[int]
     if user is None:
         return
     async with aiosqlite.connect(sqlite_database_filepath) as connection:
-        sql_query = "UPDATE %s SET is_banned=1 WHERE id=%s" % (
-            User.get_table_name(),
-            user.id,
-        )
-        await connection.execute(sql_query)
+        sql_query = f"UPDATE {User.get_table_name()} SET is_banned=1 WHERE id=?"
+        await connection.execute(sql_query, (user.id,))
         await connection.commit()
 
 
@@ -157,11 +130,8 @@ async def unban_user(database_id: Optional[int] = None, telegram_id: Optional[in
     if user is None:
         return
     async with aiosqlite.connect(sqlite_database_filepath) as connection:
-        sql_query = "UPDATE %s SET is_banned=0 WHERE id=%s" % (
-            User.get_table_name(),
-            user.id,
-        )
-        await connection.execute(sql_query)
+        sql_query = f"UPDATE {User.get_table_name()} SET is_banned=0 WHERE id=?"
+        await connection.execute(sql_query, (user.id,))
         await connection.commit()
 
 
@@ -177,10 +147,6 @@ async def update_last_active(database_id: Optional[int] = None, telegram_id: Opt
     if timestamp is None:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     async with aiosqlite.connect(sqlite_database_filepath) as connection:
-        sql_query = "UPDATE %s SET last_active='%s' WHERE id=%s" % (
-            User.get_table_name(),
-            timestamp,
-            user.id,
-        )
-        await connection.execute(sql_query)
+        sql_query = f"UPDATE {User.get_table_name()} SET last_active=? WHERE id=?"
+        await connection.execute(sql_query, (timestamp, user.id))
         await connection.commit()
