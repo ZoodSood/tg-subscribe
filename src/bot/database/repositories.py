@@ -305,6 +305,6 @@ class PromoCodeRepository:
                 cursor = await connection.execute(f"SELECT * FROM PromoCodes")
                 rows = await cursor.fetchall()
                 return [PromoCode(*row) for row in rows]
-        except Exception as e:
-            logging.error(f"PromoCodeRepository.get_all error: {e}")
+        except aiosqlite.Error as e:
+            logging.error(f"PromoCodeRepository.get_all database error: {e}")
             return []
