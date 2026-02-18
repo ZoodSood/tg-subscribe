@@ -60,7 +60,7 @@ async def set_subscription_term(message: types.Message, state: FSMContext):
         return
 
     required_sol_amount = Decimal(usd_amount) / Decimal(sol_price_usd)
-    await state.set_data({"subscription_term": term})
+    await state.set_data({"subscription_term": term, "required_sol_amount": str(required_sol_amount)})
 
     await message.answer(
         text=(
@@ -97,6 +97,7 @@ async def check_transaction(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     data = await state.get_data()
     weeks = data.get("subscription_term")
+    expected_sol = data.get("required_sol_amount")
 
     if not weeks:
         await message.answer(
@@ -109,7 +110,7 @@ async def check_transaction(message: types.Message, state: FSMContext):
     await message.answer("Validating your transaction... This may take a moment.")
 
     is_valid, validation_message = await PaymentValidator.validate_transaction(
-        txid=txid, user_id=user_id, weeks=weeks
+        txid=txid, user_id=user_id, weeks=weeks, expected_sol=Decimal(expected_sol) if expected_sol else None
     )
 
     if not is_valid:
@@ -122,7 +123,13 @@ async def check_transaction(message: types.Message, state: FSMContext):
 
     # If validation is successful, create the transaction record and update subscription
     try:
-        await TransactionRepository.create(txid, user_id, weeks)
+        success = await TransactionRepository.create(txid, user_id, weeks, amount_sol=expected_sol)
+        if not success:
+            await message.answer(
+                text="This transaction has already been processed or there was an error. If you believe this is a mistake, please contact support.",
+                reply_markup=await reply_keyboards.back_to_main_menu(),
+            )
+            return
 
         from datetime import datetime, timedelta
         user = await UserRepository.get(telegram_id=user_id)
@@ -138,6 +145,9 @@ async def check_transaction(message: types.Message, state: FSMContext):
 
         new_end = now + timedelta(weeks=weeks)
         await UserRepository.update_subscription_date(new_end.strftime("%Y-%m-%d %H:%M:%S"), telegram_id=user_id)
+
+        # Mark transaction as processed
+        await TransactionRepository.set_status(True, txid=txid)
 
         await state.clear()
         await message.answer(

@@ -43,7 +43,10 @@ async def test_set_subscription_term_valid(mock_price, mock_message, mock_state)
     mock_price.return_value = Decimal("200")
     with patch('src.bot.handlers.payment.reply_keyboards.confirm_transfer', new_callable=AsyncMock):
         await set_subscription_term(mock_message, mock_state)
-        mock_state.set_data.assert_called_once_with({"subscription_term": 1})
+        mock_state.set_data.assert_called_once()
+        args = mock_state.set_data.call_args[0][0]
+        assert args["subscription_term"] == 1
+        assert "required_sol_amount" in args
         assert "To subscribe for 1 week(s)" in mock_message.answer.call_args.kwargs['text']
 
 @pytest.mark.asyncio
@@ -90,9 +93,10 @@ async def test_confirm_transfer(mock_message, mock_state):
 @patch('src.bot.handlers.payment.UserRepository')
 async def test_check_transaction_valid(mock_user_repo, mock_trans_repo, mock_validate, mock_message, mock_state):
     mock_validate.return_value = (True, "Success")
-    mock_state.get_data.return_value = {"subscription_term": 1}
+    mock_state.get_data.return_value = {"subscription_term": 1, "required_sol_amount": "0.5"}
     mock_user_repo.get = AsyncMock(return_value=User(id=1, telegram_id=123, first_name='Test', last_name='User', username='testuser', days_sub_end='2020-01-01 00:00:00', balance=0, invite_link='', is_banned=0, last_active=None))
-    mock_trans_repo.create = AsyncMock()
+    mock_trans_repo.create = AsyncMock(return_value=True)
+    mock_trans_repo.set_status = AsyncMock()
     mock_user_repo.update_subscription_date = AsyncMock()
     with patch('src.bot.handlers.payment.reply_keyboards.back_to_main_menu', new_callable=AsyncMock):
         await check_transaction(mock_message, mock_state)
@@ -123,9 +127,10 @@ async def test_check_transaction_no_weeks(mock_message, mock_state):
 @patch('src.bot.handlers.payment.UserRepository')
 async def test_check_transaction_invalid_date(mock_user_repo, mock_trans_repo, mock_validate, mock_message, mock_state):
     mock_validate.return_value = (True, "Success")
-    mock_state.get_data.return_value = {"subscription_term": 1}
+    mock_state.get_data.return_value = {"subscription_term": 1, "required_sol_amount": "0.5"}
     mock_user_repo.get = AsyncMock(return_value=User(id=1, telegram_id=123, first_name='Test', last_name='User', username='testuser', days_sub_end='invalid-date', balance=0, invite_link='', is_banned=0, last_active=None))
-    mock_trans_repo.create = AsyncMock()
+    mock_trans_repo.create = AsyncMock(return_value=True)
+    mock_trans_repo.set_status = AsyncMock()
     mock_user_repo.update_subscription_date = AsyncMock()
     with patch('src.bot.handlers.payment.reply_keyboards.back_to_main_menu', new_callable=AsyncMock):
         await check_transaction(mock_message, mock_state)
@@ -137,9 +142,10 @@ async def test_check_transaction_invalid_date(mock_user_repo, mock_trans_repo, m
 @patch('src.bot.handlers.payment.UserRepository')
 async def test_check_transaction_db_error(mock_user_repo, mock_trans_repo, mock_validate, mock_message, mock_state):
     mock_validate.return_value = (True, "Success")
-    mock_state.get_data.return_value = {"subscription_term": 1}
+    mock_state.get_data.return_value = {"subscription_term": 1, "required_sol_amount": "0.5"}
     mock_user_repo.get = AsyncMock(return_value=User(id=1, telegram_id=123, first_name='Test', last_name='User', username='testuser', days_sub_end='2020-01-01 00:00:00', balance=0, invite_link='', is_banned=0, last_active=None))
-    mock_trans_repo.create = AsyncMock()
+    mock_trans_repo.create = AsyncMock(return_value=True)
+    mock_trans_repo.set_status = AsyncMock()
     mock_user_repo.update_subscription_date.side_effect = Exception("DB error")
     with patch('src.bot.handlers.payment.reply_keyboards.back_to_main_menu', new_callable=AsyncMock):
         await check_transaction(mock_message, mock_state)

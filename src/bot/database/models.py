@@ -33,6 +33,7 @@ class Transaction:
     owner_telegram_id: int
     status: bool
     weeks: int  # Number of weeks for the subscription
+    amount_sol: Optional[str]
     created_at_timestamp: int
 
     @staticmethod
